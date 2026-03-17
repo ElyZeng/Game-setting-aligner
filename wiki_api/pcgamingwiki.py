@@ -6,6 +6,7 @@ file paths for a given game title.
 
 from __future__ import annotations
 
+import glob as _glob_module
 import re
 import os
 from typing import Any, Dict, List, Optional, Tuple
@@ -35,7 +36,36 @@ _PATH_TOKENS: dict = {
     "$XDG_DATA_HOME": os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
 }
 
-# Map PCGamingWiki template tags to OS-specific paths
+
+def _get_steam_path() -> str:
+    """Return the Steam installation path from the Windows registry, or ``""``."""
+    if os.name != "nt":
+        return ""
+    try:
+        import winreg  # type: ignore
+
+        candidates = [
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Valve\Steam", "InstallPath"),
+            (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Valve\Steam", "SteamPath"),
+        ]
+        for hive, key_path, value_name in candidates:
+            try:
+                with winreg.OpenKey(hive, key_path) as key:
+                    value, _ = winreg.QueryValueEx(key, value_name)
+                    if value:
+                        # SteamPath may use forward slashes; normalise to OS separator
+                        return os.path.normpath(value)
+            except (FileNotFoundError, OSError):
+                continue
+    except ImportError:
+        pass
+    return ""
+
+
+# Map PCGamingWiki template tags to OS-specific paths.
+# NOTE: All keys use the canonical upper-case P form ({{P|…}}).  The expansion
+# function normalises lower-case {{p|…}} occurrences before lookup.
 _WIKI_TAG_MAP: dict = {
     "{{P|userprofile}}": os.path.expanduser("~"),
     "{{P|userappdata}}": os.environ.get("APPDATA", os.path.expanduser("~/.config")),
@@ -43,42 +73,98 @@ _WIKI_TAG_MAP: dict = {
     "{{P|localappdata}}": os.environ.get("LOCALAPPDATA", os.path.expanduser("~/.local/share")),
     "{{P|programdata}}": os.environ.get("PROGRAMDATA", "/usr/share"),
     "{{P|documents}}": os.path.join(os.path.expanduser("~"), "Documents"),
-    "{{P|uid}}": "*",  # Typically represents SteamID3; use wildcard
+    "{{P|uid}}": "*",  # Represents SteamID3; expanded to glob wildcard
     "{{P|game}}": "",  # Represents the game folder name
     "{{P|osxhome}}": os.path.expanduser("~"),
     "{{P|linuxhome}}": os.path.expanduser("~"),
     "{{P|xdgconfig}}": os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
     "{{P|xdgdata}}": os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
-    "{{P|steam}}": "",
+    "{{P|steam}}": _get_steam_path(),
 }
 
 # Registry path token prefixes – these are not filesystem paths
 _REGISTRY_TOKENS: tuple = ("{{p|hkcu}}", "{{p|hklm}}", "{{p|hkcr}}", "{{p|hku}}", "{{p|hkcc}}")
 
 
+def _remove_duplicate_path_segments(path: str) -> str:
+    """Remove consecutive duplicate segments from *path*.
+
+    For example ``C:\\AppData\\Roaming\\Roaming\\App`` becomes
+    ``C:\\AppData\\Roaming\\App``.  This fixes paths where a token such as
+    ``{{P|appdata}}`` (which already includes the ``Roaming`` directory on
+    Windows) is followed by a redundant ``\\Roaming\\`` suffix.
+    """
+    sep = os.sep
+    # Normalise all slashes to the OS separator before splitting
+    normalised = path.replace("/", sep)
+    # Preserve a leading separator (UNC paths, Unix absolute paths)
+    leading = normalised[: len(normalised) - len(normalised.lstrip(sep))]
+    parts = normalised.split(sep)
+    deduped: List[str] = []
+    for part in parts:
+        if deduped and part and part == deduped[-1]:
+            continue  # skip consecutive duplicate segment
+        deduped.append(part)
+    return leading + sep.join(p for p in deduped if p)
+
+
+def _resolve_uid_glob(path: str) -> Optional[str]:
+    """Resolve a wildcard *path* produced by ``{{p|uid}}`` expansion.
+
+    If *path* contains no ``*`` it is returned unchanged.  Otherwise
+    :func:`glob.glob` is used to find matching filesystem entries and the
+    one with the most recent modification time is returned.  Returns
+    ``None`` when the glob matches nothing.
+    """
+    if "*" not in path:
+        return path
+    matches = _glob_module.glob(path)
+    if not matches:
+        return None
+    if len(matches) == 1:
+        return matches[0]
+    try:
+        return max(matches, key=os.path.getmtime)
+    except OSError:
+        return matches[0]
+
+
 def _expand_path_tokens(path: str) -> str:
     """Expand PCGamingWiki path tokens and Wiki template tags to absolute OS paths.
 
     Processing order:
-    1. Wiki template tags (e.g. ``{{P|userprofile}}``)
-    2. Standard Windows environment variables via :func:`os.path.expandvars`
-    3. Remaining special tokens defined in :data:`_PATH_TOKENS`
 
-    The result is normalised with :func:`os.path.normpath` to unify slash
-direction across platforms.
+    1. Normalise ``{{p|…}}`` (lower-case *p*) to canonical ``{{P|…}}`` form.
+    2. Expand Wiki template tags from :data:`_WIKI_TAG_MAP`.
+    3. Expand standard Windows environment variables via
+       :func:`os.path.expandvars`.
+    4. Expand remaining special tokens defined in :data:`_PATH_TOKENS`.
+    5. Normalise the result with :func:`os.path.normpath`.
+    6. Remove consecutive duplicate path segments (fixes double-``Roaming``
+       that arises when a token already includes ``Roaming`` and the raw path
+       appends ``\\Roaming\\`` again).
     """
-    # 1. Expand Wiki template tags
+    # 1. Normalise {{p|...}} → {{P|...}} for case-insensitive tag matching
+    path = re.sub(r"\{\{p\|", "{{P|", path)
+
+    # 2. Expand Wiki template tags
     for tag, replacement in _WIKI_TAG_MAP.items():
         path = path.replace(tag, replacement)
 
-    # 2. Expand standard Windows environment variables (e.g. %APPDATA%)
+    # 3. Expand standard Windows environment variables (e.g. %APPDATA%)
     path = os.path.expandvars(path)
 
-    # 3. Expand remaining special tokens
+    # 4. Expand remaining special tokens
     for token, replacement in _PATH_TOKENS.items():
         path = path.replace(token, replacement)
 
-    return os.path.normpath(path)
+    # 5. Normalise slashes/dots
+    path = os.path.normpath(path)
+
+    # 6. Remove consecutive duplicate segments (e.g. Roaming\Roaming)
+    path = _remove_duplicate_path_segments(path)
+
+    return path
 
 
 def _is_registry_path(path: str) -> bool:
@@ -192,7 +278,10 @@ def _parse_gamedata_config(
                 continue
             raw_paths.append(raw)
             if not _is_registry_path(raw):
-                expanded_paths.append(_expand_path_tokens(raw))
+                expanded = _expand_path_tokens(raw)
+                resolved = _resolve_uid_glob(expanded)
+                if resolved is not None:
+                    expanded_paths.append(resolved)
     return raw_paths, expanded_paths
 
 
@@ -312,7 +401,11 @@ class PCGamingWikiClient:
                 raw_path = result.get("title", {}).get("Path", "")
                 if raw_path:
                     raw_paths.append(raw_path)
-                    expanded_paths.append(_expand_path_tokens(raw_path))
+                    if not _is_registry_path(raw_path):
+                        expanded = _expand_path_tokens(raw_path)
+                        resolved = _resolve_uid_glob(expanded)
+                        if resolved is not None:
+                            expanded_paths.append(resolved)
             return raw_paths, expanded_paths
         except Exception:
             return [], []
