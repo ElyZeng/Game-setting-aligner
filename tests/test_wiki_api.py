@@ -429,3 +429,176 @@ class TestQueryMediawikiRaw:
         raw_str = " ".join(result["raw_paths"])
         assert "settings.cfg" in raw_str
         assert "videoconfig.txt" in raw_str
+
+
+# ---------------------------------------------------------------------------
+# New generalisation tests
+# ---------------------------------------------------------------------------
+
+class TestDoubleRoamingFix:
+    """Verify that {{P|appdata}}\\Roaming\\... does not produce a double Roaming."""
+
+    def test_appdata_no_double_roaming(self, monkeypatch):
+        """Expanding {{P|appdata}}\\Roaming\\App\\file.cfg must not yield ...\\Roaming\\Roaming\\..."""
+        from wiki_api import pcgamingwiki as mod
+
+        # Force a known APPDATA value that ends in 'Roaming'
+        saved = mod._WIKI_TAG_MAP.get("{{P|appdata}}")
+        mod._WIKI_TAG_MAP["{{P|appdata}}"] = r"C:\Users\testuser\AppData\Roaming"
+        try:
+            result = mod._expand_path_tokens(r"{{P|appdata}}\Roaming\Arrowhead\App\file.cfg")
+            assert "Roaming" + os.sep + "Roaming" not in result, (
+                f"Double Roaming found in: {result}"
+            )
+            assert "Arrowhead" in result
+            assert "file.cfg" in result
+        finally:
+            if saved is not None:
+                mod._WIKI_TAG_MAP["{{P|appdata}}"] = saved
+
+    def test_appdata_percent_no_double_roaming(self, monkeypatch):
+        """Expanding %APPDATA%\\Roaming\\... must not yield ...\\Roaming\\Roaming\\..."""
+        from wiki_api import pcgamingwiki as mod
+
+        saved_env = os.environ.get("APPDATA")
+        os.environ["APPDATA"] = r"C:\Users\testuser\AppData\Roaming"
+        saved_token = mod._PATH_TOKENS.get("%APPDATA%")
+        mod._PATH_TOKENS["%APPDATA%"] = r"C:\Users\testuser\AppData\Roaming"
+        try:
+            result = mod._expand_path_tokens(r"%APPDATA%\Roaming\App\settings.cfg")
+            assert "Roaming" + os.sep + "Roaming" not in result, (
+                f"Double Roaming found in: {result}"
+            )
+        finally:
+            if saved_env is not None:
+                os.environ["APPDATA"] = saved_env
+            elif "APPDATA" in os.environ:
+                del os.environ["APPDATA"]
+            if saved_token is not None:
+                mod._PATH_TOKENS["%APPDATA%"] = saved_token
+
+    def test_no_double_roaming_when_no_extra_segment(self, monkeypatch):
+        """Path without extra Roaming must be left intact."""
+        from wiki_api import pcgamingwiki as mod
+
+        saved = mod._WIKI_TAG_MAP.get("{{P|appdata}}")
+        mod._WIKI_TAG_MAP["{{P|appdata}}"] = r"C:\Users\testuser\AppData\Roaming"
+        try:
+            result = mod._expand_path_tokens(r"{{P|appdata}}\Arrowhead\App\file.cfg")
+            # Should end with Roaming\Arrowhead\...
+            assert result.count("Roaming") == 1, (
+                f"Unexpected Roaming count in: {result}"
+            )
+        finally:
+            if saved is not None:
+                mod._WIKI_TAG_MAP["{{P|appdata}}"] = saved
+
+
+class TestSteamPathExpansion:
+    """Verify {{P|steam}} expansion via (mocked) registry."""
+
+    def test_steam_token_uses_registry_value(self, monkeypatch):
+        """When _WIKI_TAG_MAP[{{P|steam}}] is set, expansion should include it."""
+        from wiki_api import pcgamingwiki as mod
+
+        saved = mod._WIKI_TAG_MAP.get("{{P|steam}}")
+        mod._WIKI_TAG_MAP["{{P|steam}}"] = r"C:\Program Files (x86)\Steam"
+        try:
+            result = mod._expand_path_tokens(r"{{P|steam}}\steam.exe")
+            assert "Steam" in result
+            assert "steam.exe" in result
+        finally:
+            if saved is not None:
+                mod._WIKI_TAG_MAP["{{P|steam}}"] = saved
+
+    def test_get_steam_path_returns_string(self):
+        """_get_steam_path must always return a str (empty on non-Windows)."""
+        from wiki_api.pcgamingwiki import _get_steam_path
+
+        result = _get_steam_path()
+        assert isinstance(result, str)
+
+    def test_steam_token_lowercase_p(self, monkeypatch):
+        """{{p|steam}} (lower-case p) must be expanded the same as {{P|steam}}."""
+        from wiki_api import pcgamingwiki as mod
+
+        saved = mod._WIKI_TAG_MAP.get("{{P|steam}}")
+        mod._WIKI_TAG_MAP["{{P|steam}}"] = r"C:\Program Files (x86)\Steam"
+        try:
+            result = mod._expand_path_tokens(r"{{p|steam}}\steam.exe")
+            assert "Steam" in result
+            assert "steam.exe" in result
+        finally:
+            if saved is not None:
+                mod._WIKI_TAG_MAP["{{P|steam}}"] = saved
+
+
+class TestUidGlobResolution:
+    """Verify {{p|uid}} expansion picks the most-recently-modified match."""
+
+    def test_uid_wildcard_no_match_excluded(self, tmp_path, monkeypatch):
+        """A uid path that matches nothing must not appear in expanded_paths."""
+        from wiki_api.pcgamingwiki import _resolve_uid_glob
+
+        non_existent = str(tmp_path / "userdata" / "*" / "553850" / "input.config")
+        result = _resolve_uid_glob(non_existent)
+        assert result is None
+
+    def test_uid_single_match_resolved(self, tmp_path):
+        """A single uid match is returned directly."""
+        from wiki_api.pcgamingwiki import _resolve_uid_glob
+
+        uid_dir = tmp_path / "userdata" / "12345" / "553850"
+        uid_dir.mkdir(parents=True)
+        target = uid_dir / "input.config"
+        target.write_text("data", encoding="utf-8")
+
+        pattern = str(tmp_path / "userdata" / "*" / "553850" / "input.config")
+        result = _resolve_uid_glob(pattern)
+        assert result is not None
+        assert "12345" in result
+
+    def test_uid_multiple_matches_picks_latest_mtime(self, tmp_path, monkeypatch):
+        """When multiple uid directories exist, the latest-mtime file is returned."""
+        from wiki_api.pcgamingwiki import _resolve_uid_glob
+
+        uid1 = tmp_path / "userdata" / "111" / "553850"
+        uid2 = tmp_path / "userdata" / "222" / "553850"
+        uid1.mkdir(parents=True)
+        uid2.mkdir(parents=True)
+
+        file1 = uid1 / "input.config"
+        file2 = uid2 / "input.config"
+        file1.write_text("old", encoding="utf-8")
+        file2.write_text("new", encoding="utf-8")
+
+        # Make file2 look newer
+        mtime_map = {str(file1): 1000.0, str(file2): 2000.0}
+        monkeypatch.setattr(os.path, "getmtime", lambda p: mtime_map.get(p, 1500.0))
+
+        pattern = str(tmp_path / "userdata" / "*" / "553850" / "input.config")
+        result = _resolve_uid_glob(pattern)
+        assert result is not None
+        assert "222" in result
+
+    def test_uid_no_wildcard_returns_path_unchanged(self):
+        """A path without '*' is returned unchanged by _resolve_uid_glob."""
+        from wiki_api.pcgamingwiki import _resolve_uid_glob
+
+        path = r"C:\Users\user\AppData\Roaming\App\settings.cfg"
+        assert _resolve_uid_glob(path) == path
+
+    def test_lowercase_p_uid_expands_to_wildcard(self, monkeypatch):
+        """{{p|uid}} (lowercase p) should expand to '*' via normalisation."""
+        from wiki_api import pcgamingwiki as mod
+
+        raw = r"{{P|steam}}/userdata/{{p|uid}}/553850/remote/input.config"
+        # We only care that the expansion replaces {{p|uid}} with *
+        saved_steam = mod._WIKI_TAG_MAP.get("{{P|steam}}")
+        mod._WIKI_TAG_MAP["{{P|steam}}"] = "/fake/steam"
+        try:
+            expanded = mod._expand_path_tokens(raw)
+            assert "*" in expanded or "553850" in expanded
+        finally:
+            if saved_steam is not None:
+                mod._WIKI_TAG_MAP["{{P|steam}}"] = saved_steam

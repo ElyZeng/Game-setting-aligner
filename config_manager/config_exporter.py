@@ -13,6 +13,14 @@ from typing import Any, Dict, List, Optional
 # Maximum bytes to read from a single config file (512 KB)
 _MAX_FILE_BYTES = 512 * 1024
 
+# Extensions treated as config/settings files when scanning directories
+_CONFIG_EXTENSIONS = frozenset(
+    {".ini", ".cfg", ".config", ".json", ".xml", ".txt"}
+)
+
+# Default maximum directory scan depth
+_DIR_SCAN_DEPTH = 2
+
 
 def _try_read_file(path: str) -> Dict[str, Any]:
     """Attempt to read a config file and return a structured result dict.
@@ -55,6 +63,56 @@ def _try_read_file(path: str) -> Dict[str, Any]:
     except OSError as exc:
         entry["error"] = str(exc)
     return entry
+
+
+def _is_steam_userdata_path(path: str) -> bool:
+    """Return ``True`` if *path* resides under a Steam ``userdata`` directory.
+
+    Steam userdata paths are kept in ``pcgamingwiki.expanded_paths`` for
+    diagnostics but are excluded from ``config_files`` by default (decision
+    1a).
+    """
+    # Normalise to forward slashes for a simple substring check
+    normalised = path.replace("\\", "/").lower()
+    return "/userdata/" in normalised
+
+
+def _scan_directory(dir_path: str, max_depth: int = _DIR_SCAN_DEPTH) -> List[str]:
+    """Recursively scan *dir_path* for config-like files up to *max_depth*.
+
+    Parameters
+    ----------
+    dir_path:
+        Absolute path to the directory to scan.
+    max_depth:
+        Maximum recursion depth.  ``0`` scans only the immediate children of
+        *dir_path*; ``2`` (default) descends two levels deeper.
+
+    Returns
+    -------
+    list[str]
+        Absolute paths of matching files whose extension is in
+        :data:`_CONFIG_EXTENSIONS`.
+    """
+    found: List[str] = []
+
+    def _recurse(path: str, depth: int) -> None:
+        try:
+            with os.scandir(path) as it:
+                for entry in it:
+                    if entry.is_dir(follow_symlinks=False):
+                        if depth > 0:
+                            _recurse(entry.path, depth - 1)
+                        continue
+                    if entry.is_file(follow_symlinks=False):
+                        ext = os.path.splitext(entry.name)[1].lower()
+                        if ext in _CONFIG_EXTENSIONS:
+                            found.append(entry.path)
+        except OSError:
+            pass
+
+    _recurse(dir_path, max_depth)
+    return found
 
 
 class ConfigExporter:
@@ -143,8 +201,19 @@ class ConfigExporter:
             wiki_result = self._query_wiki(game_name)
             info["pcgamingwiki"] = wiki_result
             expanded_paths: List[str] = wiki_result.get("expanded_paths") or []
-            if expanded_paths:
-                info["config_files"] = [_try_read_file(p) for p in expanded_paths]
+            config_files: List[Dict[str, Any]] = []
+            for path in expanded_paths:
+                # Steam userdata paths are kept in expanded_paths for diagnostics
+                # but their file content is excluded from config_files (decision 1a).
+                if _is_steam_userdata_path(path):
+                    continue
+                if os.path.isdir(path):
+                    # Wiki returned a folder path – scan for config files
+                    for file_path in _scan_directory(path):
+                        config_files.append(_try_read_file(file_path))
+                else:
+                    config_files.append(_try_read_file(path))
+            info["config_files"] = config_files
 
         return info
 
