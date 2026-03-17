@@ -18,7 +18,7 @@ except ImportError:  # pragma: no cover
 
 from scanner import SteamScanner, EpicScanner, GOGScanner
 from wiki_api import PCGamingWikiClient
-from config_manager import ConfigPackage
+from config_manager import ConfigPackage, ConfigExporter
 
 
 def _require_ctk() -> None:
@@ -32,9 +32,10 @@ def _require_ctk() -> None:
 class GameRow:
     """A single row in the game list containing a checkbox and a label."""
 
-    def __init__(self, parent: Any, game_name: str, platform: str) -> None:
+    def __init__(self, parent: Any, game_name: str, platform: str, install_path: str = "") -> None:
         self.game_name = game_name
         self.platform = platform
+        self.install_path = install_path
 
         self.var = ctk.BooleanVar(value=False)
         self.frame = ctk.CTkFrame(parent, corner_radius=6)
@@ -47,6 +48,11 @@ class GameRow:
             font=ctk.CTkFont(size=13),
         )
         self.checkbox.pack(side="left", padx=8, pady=4)
+
+    @property
+    def name(self) -> str:
+        """Alias for ``game_name`` for compatibility with scanner game objects."""
+        return self.game_name
 
     @property
     def selected(self) -> bool:
@@ -68,7 +74,6 @@ class App:
         self.root.minsize(600, 400)
 
         self._game_rows: List[GameRow] = []
-        self._game_config_paths: Dict[str, List[str]] = {}
         self._wiki_client = PCGamingWikiClient()
         self._package = ConfigPackage()
 
@@ -197,7 +202,8 @@ class App:
         for game in games:
             name = getattr(game, "name", str(game))
             platform = getattr(game, "platform", "Unknown")
-            row = GameRow(self._scroll_frame, name, platform)
+            install_path = getattr(game, "install_path", "")
+            row = GameRow(self._scroll_frame, name, platform, install_path)
             self._game_rows.append(row)
 
         self._set_scanning(False)
@@ -251,19 +257,9 @@ class App:
         ).start()
 
     def _do_export(self, rows: List[GameRow], output_path: str) -> None:
-        game_configs: Dict[str, List[str]] = {}
-        for row in rows:
-            paths = self._game_config_paths.get(row.game_name)
-            if paths is None:
-                try:
-                    paths = self._wiki_client.get_config_paths(row.game_name)
-                except Exception:
-                    paths = []
-                self._game_config_paths[row.game_name] = paths
-            game_configs[row.game_name] = paths
-
+        exporter = ConfigExporter(wiki_client=self._wiki_client)
         try:
-            self._package.export(game_configs, output_path)
+            exporter.export(rows, output_path)
             self.root.after(
                 0,
                 messagebox.showinfo,

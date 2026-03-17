@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 import os
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     import requests  # type: ignore
@@ -108,15 +108,55 @@ class PCGamingWikiClient:
         Uses the PCGamingWiki Cargo API to query the ``Config_game_data`` table.
         Falls back to HTML scraping if the Cargo query returns no results.
         """
-        paths = self._query_cargo(game_title)
-        if not paths:
-            paths = self._scrape_wiki_page(game_title)
-        return paths
+        _, expanded = self._query_cargo_raw(game_title)
+        if not expanded:
+            _, expanded = self._scrape_wiki_page_raw(game_title)
+        return expanded
 
-    def _query_cargo(self, game_title: str) -> List[str]:
-        """Query PCGamingWiki Cargo tables for config paths."""
+    def get_config_info(self, game_title: str) -> Dict[str, Any]:
+        """Return a dict with raw and expanded config paths for *game_title*.
+
+        The returned dict has the following keys:
+
+        ``page_title``
+            The game title as queried.
+        ``url``
+            The expected PCGamingWiki URL for this game.
+        ``raw_paths``
+            List of raw path strings as returned by PCGamingWiki (may contain
+            template tags such as ``{{P|userprofile}}``).
+        ``expanded_paths``
+            List of path strings after expanding tokens to local OS paths.
+        ``error``
+            ``None`` on success, or an error message string on failure.
+        """
+        result: Dict[str, Any] = {
+            "page_title": game_title,
+            "url": _WIKI_BASE + game_title.replace(" ", "_"),
+            "raw_paths": [],
+            "expanded_paths": [],
+            "error": None,
+        }
         if self._session is None:
-            return []
+            result["error"] = "requests library not available"
+            return result
+        try:
+            raw, expanded = self._query_cargo_raw(game_title)
+            if not raw:
+                raw, expanded = self._scrape_wiki_page_raw(game_title)
+            result["raw_paths"] = raw
+            result["expanded_paths"] = expanded
+        except Exception as exc:  # pragma: no cover
+            result["error"] = str(exc)
+        return result
+
+    def _query_cargo_raw(self, game_title: str) -> Tuple[List[str], List[str]]:
+        """Query PCGamingWiki Cargo tables for config paths.
+
+        Returns a tuple ``(raw_paths, expanded_paths)``.
+        """
+        if self._session is None:
+            return [], []
 
         # Escape single quotes to avoid injection into the Cargo WHERE clause.
         safe_title = game_title.replace("'", "\\'")
@@ -133,19 +173,24 @@ class PCGamingWikiClient:
             response.raise_for_status()
             data = response.json()
             results = data.get("cargoquery", [])
-            paths: List[str] = []
+            raw_paths: List[str] = []
+            expanded_paths: List[str] = []
             for result in results:
                 raw_path = result.get("title", {}).get("Path", "")
                 if raw_path:
-                    paths.append(_expand_path_tokens(raw_path))
-            return paths
+                    raw_paths.append(raw_path)
+                    expanded_paths.append(_expand_path_tokens(raw_path))
+            return raw_paths, expanded_paths
         except Exception:
-            return []
+            return [], []
 
-    def _scrape_wiki_page(self, game_title: str) -> List[str]:
-        """Scrape the PCGamingWiki page for config paths as a fallback."""
+    def _scrape_wiki_page_raw(self, game_title: str) -> Tuple[List[str], List[str]]:
+        """Scrape the PCGamingWiki page for config paths as a fallback.
+
+        Returns a tuple ``(raw_paths, expanded_paths)``.
+        """
         if self._session is None or BeautifulSoup is None:
-            return []
+            return [], []
 
         url = _WIKI_BASE + game_title.replace(" ", "_")
         try:
@@ -153,13 +198,15 @@ class PCGamingWikiClient:
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
         except Exception:
-            return []
+            return [], []
 
-        paths: List[str] = []
+        raw_paths: List[str] = []
+        expanded_paths: List[str] = []
         # Config table rows typically contain path-like text with slashes or backslashes
         for td in soup.find_all("td", class_=re.compile(r"game-data", re.I)):
             text = td.get_text(separator=" ", strip=True)
             if re.search(r"[/\\]", text):
-                paths.append(_expand_path_tokens(text))
+                raw_paths.append(text)
+                expanded_paths.append(_expand_path_tokens(text))
 
-        return paths
+        return raw_paths, expanded_paths
