@@ -46,3 +46,69 @@ class TestPCGamingWikiClient:
 
         result = client.get_config_paths("Nonexistent Game XYZ")
         assert isinstance(result, list)
+
+
+class TestPCGamingWikiClientGetConfigInfo:
+    def test_get_config_info_returns_dict(self, monkeypatch):
+        """get_config_info should return a dict with expected keys."""
+        client = PCGamingWikiClient()
+
+        def _fail(*args, **kwargs):
+            raise ConnectionError("No network")
+
+        if client._session:
+            monkeypatch.setattr(client._session, "get", _fail)
+
+        result = client.get_config_info("Test Game")
+        assert isinstance(result, dict)
+        assert "page_title" in result
+        assert "url" in result
+        assert "raw_paths" in result
+        assert "expanded_paths" in result
+        assert "error" in result
+
+    def test_get_config_info_structure_on_network_failure(self, monkeypatch):
+        """get_config_info should return a dict with error set on network failure."""
+        client = PCGamingWikiClient()
+
+        def _fail(*args, **kwargs):
+            raise ConnectionError("No network")
+
+        if client._session:
+            monkeypatch.setattr(client._session, "get", _fail)
+
+        result = client.get_config_info("Apex Legends")
+        assert isinstance(result, dict)
+        assert "raw_paths" in result
+        assert "expanded_paths" in result
+        assert isinstance(result["raw_paths"], list)
+        assert isinstance(result["expanded_paths"], list)
+
+    def test_get_config_info_has_url_field(self):
+        """get_config_info should always populate 'url' with the wiki page URL."""
+        client = PCGamingWikiClient()
+
+        # Patch session.get to return empty cargo result without raising
+        import json as _json
+        from unittest.mock import MagicMock
+
+        fake_response = MagicMock()
+        fake_response.raise_for_status.return_value = None
+        fake_response.json.return_value = {"cargoquery": []}
+
+        if client._session:
+            client._session.get = MagicMock(return_value=fake_response)
+
+        result = client.get_config_info("Apex Legends")
+        assert "url" in result
+        assert "Apex" in result["url"]
+
+    def test_get_config_info_no_session(self, monkeypatch):
+        """get_config_info should handle missing requests gracefully."""
+        client = PCGamingWikiClient()
+        monkeypatch.setattr(client, "_session", None)
+
+        result = client.get_config_info("Some Game")
+        assert result["error"] is not None
+        assert result["raw_paths"] == []
+        assert result["expanded_paths"] == []
