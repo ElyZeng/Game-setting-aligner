@@ -38,11 +38,22 @@ _PATH_TOKENS: dict = {
 # Map PCGamingWiki template tags to OS-specific paths
 _WIKI_TAG_MAP: dict = {
     "{{P|userprofile}}": os.path.expanduser("~"),
-    "{{P|userappdata}}": os.environ.get("APPDATA", ""),
-    "{{P|localappdata}}": os.environ.get("LOCALAPPDATA", ""),
+    "{{P|userappdata}}": os.environ.get("APPDATA", os.path.expanduser("~/.config")),
+    "{{P|appdata}}": os.environ.get("APPDATA", os.path.expanduser("~/.config")),
+    "{{P|localappdata}}": os.environ.get("LOCALAPPDATA", os.path.expanduser("~/.local/share")),
+    "{{P|programdata}}": os.environ.get("PROGRAMDATA", "/usr/share"),
+    "{{P|documents}}": os.path.join(os.path.expanduser("~"), "Documents"),
     "{{P|uid}}": "*",  # Typically represents SteamID3; use wildcard
     "{{P|game}}": "",  # Represents the game folder name
+    "{{P|osxhome}}": os.path.expanduser("~"),
+    "{{P|linuxhome}}": os.path.expanduser("~"),
+    "{{P|xdgconfig}}": os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+    "{{P|xdgdata}}": os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
+    "{{P|steam}}": "",
 }
+
+# Registry path token prefixes – these are not filesystem paths
+_REGISTRY_TOKENS: tuple = ("{{p|hkcu}}", "{{p|hklm}}", "{{p|hkcr}}", "{{p|hku}}", "{{p|hkcc}}")
 
 
 def _expand_path_tokens(path: str) -> str:
@@ -68,6 +79,121 @@ direction across platforms.
         path = path.replace(token, replacement)
 
     return os.path.normpath(path)
+
+
+def _is_registry_path(path: str) -> bool:
+    """Return ``True`` if *path* is a Windows registry path, not a filesystem path."""
+    path_lower = path.lower()
+    return any(path_lower.startswith(tok) for tok in _REGISTRY_TOKENS)
+
+
+def _find_template_blocks(wikitext: str, template_name: str) -> List[str]:
+    """Return all ``{{template_name|…}}`` blocks from *wikitext*, handling nesting.
+
+    Uses brace-counting so nested ``{{P|…}}`` tokens inside a block are not
+    mistaken for the closing ``}}`` of the outer template.
+    """
+    blocks: List[str] = []
+    search_lower = ("{{" + template_name).lower()
+    wt_lower = wikitext.lower()
+    pos = 0
+    while True:
+        idx = wt_lower.find(search_lower, pos)
+        if idx == -1:
+            break
+        # Verify the match is followed by '|' or '}}' (i.e. it's the full name)
+        after = idx + len(search_lower)
+        if after >= len(wikitext) or wikitext[after] not in ("|", "}"):
+            pos = idx + 1
+            continue
+        # Walk forward counting '{{' / '}}' to find the matching close
+        depth = 0
+        i = idx
+        while i < len(wikitext):
+            if wikitext[i : i + 2] == "{{":
+                depth += 1
+                i += 2
+            elif wikitext[i : i + 2] == "}}":
+                depth -= 1
+                i += 2
+                if depth == 0:
+                    break
+            else:
+                i += 1
+        blocks.append(wikitext[idx:i])
+        pos = i
+    return blocks
+
+
+def _split_by_pipe(content: str) -> List[str]:
+    """Split *content* on ``|`` while respecting ``{{…}}`` nesting."""
+    parts: List[str] = []
+    depth = 0
+    buf: List[str] = []
+    i = 0
+    while i < len(content):
+        if content[i : i + 2] == "{{":
+            depth += 1
+            buf.append("{{")
+            i += 2
+        elif content[i : i + 2] == "}}":
+            depth -= 1
+            buf.append("}}")
+            i += 2
+        elif content[i] == "|" and depth == 0:
+            parts.append("".join(buf))
+            buf = []
+            i += 1
+        else:
+            buf.append(content[i])
+            i += 1
+    if buf:
+        parts.append("".join(buf))
+    return parts
+
+
+def _parse_gamedata_config(
+    wikitext: str, os_filter: str = "Windows"
+) -> Tuple[List[str], List[str]]:
+    """Parse ``{{Game data/config|OS|path|…}}`` blocks from *wikitext*.
+
+    Parameters
+    ----------
+    wikitext:
+        Raw wikitext fetched from PCGamingWiki.
+    os_filter:
+        Only extract paths from blocks whose OS argument contains this string
+        (case-insensitive).  Defaults to ``"Windows"``.
+
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        ``(raw_paths, expanded_paths)``.  Registry paths (``{{P|hkcu}}`` etc.)
+        are included in *raw_paths* for diagnostics but excluded from
+        *expanded_paths*.
+    """
+    raw_paths: List[str] = []
+    expanded_paths: List[str] = []
+    for block in _find_template_blocks(wikitext, "Game data/config"):
+        # Strip outer {{ and }} then split on | (respecting nested templates)
+        if not (block.startswith("{{") and block.endswith("}}")):
+            continue  # guard against malformed blocks
+        inner = block[2:-2]
+        parts = _split_by_pipe(inner)
+        # parts[0] == "Game data/config", parts[1] == OS, parts[2:] == paths
+        if len(parts) < 3:
+            continue
+        os_name = parts[1].strip()
+        if os_filter.lower() not in os_name.lower():
+            continue
+        for raw in parts[2:]:
+            raw = raw.strip()
+            if not raw:
+                continue
+            raw_paths.append(raw)
+            if not _is_registry_path(raw):
+                expanded_paths.append(_expand_path_tokens(raw))
+    return raw_paths, expanded_paths
 
 
 class PCGamingWikiClient:
@@ -106,9 +232,12 @@ class PCGamingWikiClient:
         """Return a list of expanded config file paths for the given game title.
 
         Uses the PCGamingWiki Cargo API to query the ``Config_game_data`` table.
-        Falls back to HTML scraping if the Cargo query returns no results.
+        Falls back to the MediaWiki API (wikitext parsing) and then to HTML
+        scraping if the Cargo query returns no results.
         """
         _, expanded = self._query_cargo_raw(game_title)
+        if not expanded:
+            _, expanded = self._query_mediawiki_raw(game_title)
         if not expanded:
             _, expanded = self._scrape_wiki_page_raw(game_title)
         return expanded
@@ -127,6 +256,8 @@ class PCGamingWikiClient:
             template tags such as ``{{P|userprofile}}``).
         ``expanded_paths``
             List of path strings after expanding tokens to local OS paths.
+            Registry paths (e.g. ``{{P|hkcu}}\\…``) are omitted here but are
+            present in ``raw_paths`` for diagnostics.
         ``error``
             ``None`` on success, or an error message string on failure.
         """
@@ -142,6 +273,8 @@ class PCGamingWikiClient:
             return result
         try:
             raw, expanded = self._query_cargo_raw(game_title)
+            if not raw:
+                raw, expanded = self._query_mediawiki_raw(game_title)
             if not raw:
                 raw, expanded = self._scrape_wiki_page_raw(game_title)
             result["raw_paths"] = raw
@@ -181,6 +314,48 @@ class PCGamingWikiClient:
                     raw_paths.append(raw_path)
                     expanded_paths.append(_expand_path_tokens(raw_path))
             return raw_paths, expanded_paths
+        except Exception:
+            return [], []
+
+    def _query_mediawiki_raw(self, game_title: str) -> Tuple[List[str], List[str]]:
+        """Fetch wikitext via the MediaWiki API and parse config paths.
+
+        Uses ``action=query&prop=revisions`` to retrieve the raw wikitext for
+        *game_title* and then calls :func:`_parse_gamedata_config` to extract
+        paths from ``{{Game data/config|Windows|…}}`` blocks.
+
+        This method is used as a fallback when :meth:`_query_cargo_raw` returns
+        no results.
+
+        Returns a tuple ``(raw_paths, expanded_paths)``.
+        """
+        if self._session is None:
+            return [], []
+
+        params = {
+            "action": "query",
+            "prop": "revisions",
+            "rvslots": "main",
+            "rvprop": "content",
+            "titles": game_title,
+            "format": "json",
+        }
+        try:
+            response = self._session.get(_API_URL, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+            pages = data.get("query", {}).get("pages", {})
+            if not pages:
+                return [], []
+            page = next(iter(pages.values()))
+            revisions = page.get("revisions")
+            if not revisions:
+                return [], []
+            slot = revisions[0].get("slots", {}).get("main", {})
+            wikitext = slot.get("*", "")
+            if not wikitext:
+                return [], []
+            return _parse_gamedata_config(wikitext)
         except Exception:
             return [], []
 
