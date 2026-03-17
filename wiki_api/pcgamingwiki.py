@@ -35,12 +35,39 @@ _PATH_TOKENS: dict = {
     "$XDG_DATA_HOME": os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
 }
 
+# Map PCGamingWiki template tags to OS-specific paths
+_WIKI_TAG_MAP: dict = {
+    "{{P|userprofile}}": os.path.expanduser("~"),
+    "{{P|userappdata}}": os.environ.get("APPDATA", ""),
+    "{{P|localappdata}}": os.environ.get("LOCALAPPDATA", ""),
+    "{{P|uid}}": "*",  # Typically represents SteamID3; use wildcard
+    "{{P|game}}": "",  # Represents the game folder name
+}
+
 
 def _expand_path_tokens(path: str) -> str:
-    """Expand PCGamingWiki path tokens to absolute OS paths."""
+    """Expand PCGamingWiki path tokens and Wiki template tags to absolute OS paths.
+
+    Processing order:
+    1. Wiki template tags (e.g. ``{{P|userprofile}}``)
+    2. Standard Windows environment variables via :func:`os.path.expandvars`
+    3. Remaining special tokens defined in :data:`_PATH_TOKENS`
+
+    The result is normalised with :func:`os.path.normpath` to unify slash
+direction across platforms.
+    """
+    # 1. Expand Wiki template tags
+    for tag, replacement in _WIKI_TAG_MAP.items():
+        path = path.replace(tag, replacement)
+
+    # 2. Expand standard Windows environment variables (e.g. %APPDATA%)
+    path = os.path.expandvars(path)
+
+    # 3. Expand remaining special tokens
     for token, replacement in _PATH_TOKENS.items():
         path = path.replace(token, replacement)
-    return path
+
+    return os.path.normpath(path)
 
 
 class PCGamingWikiClient:
