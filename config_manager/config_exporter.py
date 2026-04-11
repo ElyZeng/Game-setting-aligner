@@ -115,6 +115,33 @@ def _scan_directory(dir_path: str, max_depth: int = _DIR_SCAN_DEPTH) -> List[str
     return found
 
 
+def detect_config_files(expanded_paths: List[str]) -> List[str]:
+    """Return local config file paths that actually exist on this machine.
+
+    Parameters
+    ----------
+    expanded_paths:
+        List of expanded filesystem paths obtained from PCGamingWiki (e.g. via
+        :meth:`PCGamingWikiClient.get_config_paths`).
+
+    Returns
+    -------
+    list[str]
+        Absolute paths of config files that exist locally.  Directory paths are
+        scanned recursively up to :data:`_DIR_SCAN_DEPTH` levels deep.  Steam
+        userdata paths are always excluded.
+    """
+    found: List[str] = []
+    for path in expanded_paths:
+        if _is_steam_userdata_path(path):
+            continue
+        if os.path.isdir(path):
+            found.extend(_scan_directory(path))
+        elif os.path.isfile(path):
+            found.append(path)
+    return found
+
+
 class ConfigExporter:
     """Export game configs enriched with PCGamingWiki path metadata.
 

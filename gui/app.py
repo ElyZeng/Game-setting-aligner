@@ -6,6 +6,7 @@ with checkboxes and provides Export/Import functionality.
 
 from __future__ import annotations
 
+import concurrent.futures
 import os
 import threading
 from tkinter import filedialog, messagebox
@@ -18,7 +19,11 @@ except ImportError:  # pragma: no cover
 
 from scanner import SteamScanner, EpicScanner, GOGScanner
 from wiki_api import PCGamingWikiClient
-from config_manager import ConfigPackage, ConfigExporter
+from config_manager import ConfigPackage, ConfigExporter, detect_config_files
+
+
+# Sentinel used by GameRow.update_config_status to indicate a failed wiki lookup.
+_UNABLE_TO_CHECK = object()
 
 
 def _require_ctk() -> None:
@@ -32,7 +37,14 @@ def _require_ctk() -> None:
 class GameRow:
     """A single row in the game list containing a checkbox and a label."""
 
-    def __init__(self, parent: Any, game_name: str, platform: str, install_path: str = "") -> None:
+    def __init__(
+        self,
+        parent: Any,
+        game_name: str,
+        platform: str,
+        install_path: str = "",
+        config_files: Optional[List[str]] = None,
+    ) -> None:
         self.game_name = game_name
         self.platform = platform
         self.install_path = install_path
@@ -48,6 +60,42 @@ class GameRow:
             font=ctk.CTkFont(size=13),
         )
         self.checkbox.pack(side="left", padx=8, pady=4)
+
+        # Config status label (right-aligned)
+        self._config_label = ctk.CTkLabel(
+            self.frame,
+            text="",
+            font=ctk.CTkFont(size=11),
+        )
+        self._config_label.pack(side="right", padx=8, pady=4)
+
+        self.update_config_status(config_files)
+
+    def update_config_status(self, config_files: Any) -> None:
+        """Update the config file status label.
+
+        Parameters
+        ----------
+        config_files:
+            ``None``               → still querying (shows "🔄 Checking…")
+            ``_UNABLE_TO_CHECK``   → wiki lookup failed (shows "Unable to check")
+            ``[]``                 → query done, no config files found locally
+            ``[path, …]``          → query done, one or more config files found
+        """
+        if config_files is None:
+            self._config_label.configure(text="🔄 Checking…", text_color="gray")
+        elif config_files is _UNABLE_TO_CHECK:
+            self._config_label.configure(text="Unable to check", text_color="gray")
+        elif len(config_files) == 0:
+            self._config_label.configure(
+                text="⚠️ No config files found", text_color="#d4a017"
+            )
+        else:
+            count = len(config_files)
+            self._config_label.configure(
+                text=f"✅ {count} config file(s) found",
+                text_color="#48bb78",
+            )
 
     @property
     def name(self) -> str:
@@ -197,16 +245,23 @@ class App:
         if not games:
             self._status_label.configure(text="No games found.")
         else:
-            self._status_label.configure(text=f"{len(games)} game(s) found.")
+            self._status_label.configure(
+                text=f"{len(games)} game(s) found. Checking config files…"
+            )
 
         for game in games:
             name = getattr(game, "name", str(game))
             platform = getattr(game, "platform", "Unknown")
             install_path = getattr(game, "install_path", "")
-            row = GameRow(self._scroll_frame, name, platform, install_path)
+            # config_files=None shows "Checking…" until Phase 2 updates the row
+            row = GameRow(self._scroll_frame, name, platform, install_path, config_files=None)
             self._game_rows.append(row)
 
         self._set_scanning(False)
+
+        # Phase 2: background Wiki query + local config detection
+        if games:
+            self._start_config_detection(list(games))
 
     def _set_scanning(self, scanning: bool) -> None:
         if scanning:
@@ -221,6 +276,61 @@ class App:
             self._export_btn.configure(state="normal")
             self._import_btn.configure(state="normal")
             self._scan_btn.configure(state="normal")
+
+    def _start_config_detection(self, games: List[Any]) -> None:
+        """Start Phase-2 background config detection for all games.
+
+        Uses a :class:`~concurrent.futures.ThreadPoolExecutor` with up to 5
+        workers to query PCGamingWiki and check local config files in parallel.
+        Each completed result is pushed back to the main thread via
+        ``root.after(0, …)`` so that UI updates are always thread-safe.
+        """
+        # Build a mapping from game name to its GameRow so we can update the
+        # correct row when a result arrives.
+        rows_by_name: Dict[str, GameRow] = {
+            row.game_name: row for row in self._game_rows
+        }
+
+        def _detect(game: Any):
+            """Query Wiki and detect local config files for a single game."""
+            game_name = getattr(game, "name", str(game))
+            try:
+                expanded_paths = self._wiki_client.get_config_paths(game_name)
+                found_files = detect_config_files(expanded_paths)
+            except Exception:
+                # Graceful degradation: network errors, timeouts, parsing
+                # failures, etc. should not crash the background thread.
+                return game_name, _UNABLE_TO_CHECK
+            return game_name, found_files
+
+        def _run_all() -> None:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                future_to_game = {
+                    executor.submit(_detect, game): game for game in games
+                }
+                for future in concurrent.futures.as_completed(future_to_game):
+                    try:
+                        game_name, result = future.result()
+                    except Exception:
+                        # Defensive catch: future.result() itself should not
+                        # raise since _detect handles its own errors, but guard
+                        # against any unexpected executor-level failures.
+                        game = future_to_game[future]
+                        game_name = getattr(game, "name", str(game))
+                        result = _UNABLE_TO_CHECK
+
+                    row = rows_by_name.get(game_name)
+                    if row is not None:
+                        self.root.after(0, row.update_config_status, result)
+
+            # All done – update status bar back to a simple count
+            self.root.after(
+                0,
+                self._status_label.configure,
+                {"text": f"{len(self._game_rows)} game(s) found."},
+            )
+
+        threading.Thread(target=_run_all, daemon=True).start()
 
     # ------------------------------------------------------------------
     # Actions

@@ -1,6 +1,6 @@
 from .reader import ConfigReader
 from .writer import ConfigWriter
 from .package import ConfigPackage
-from .config_exporter import ConfigExporter
+from .config_exporter import ConfigExporter, detect_config_files
 
-__all__ = ["ConfigReader", "ConfigWriter", "ConfigPackage", "ConfigExporter"]
+__all__ = ["ConfigReader", "ConfigWriter", "ConfigPackage", "ConfigExporter", "detect_config_files"]
