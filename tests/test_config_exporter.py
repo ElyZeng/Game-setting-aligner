@@ -247,6 +247,7 @@ from config_manager.config_exporter import (
     _scan_directory,
     _DIR_SCAN_DEPTH,
     _CONFIG_EXTENSIONS,
+    detect_config_files,
 )
 
 
@@ -468,3 +469,57 @@ class TestConfigExporterDirectoryScan:
         cfg_files = data["games"]["Game"]["config_files"]
         paths = [e["expanded_path"] for e in cfg_files]
         assert not any("deep.cfg" in p for p in paths)
+
+
+# ---------------------------------------------------------------------------
+# detect_config_files tests
+# ---------------------------------------------------------------------------
+
+class TestDetectConfigFiles:
+    def test_empty_input_returns_empty(self):
+        assert detect_config_files([]) == []
+
+    def test_existing_file_returned(self, tmp_path):
+        cfg = tmp_path / "settings.cfg"
+        cfg.write_text("k=v", encoding="utf-8")
+        result = detect_config_files([str(cfg)])
+        assert str(cfg) in result
+
+    def test_nonexistent_file_not_returned(self, tmp_path):
+        result = detect_config_files([str(tmp_path / "missing.cfg")])
+        assert result == []
+
+    def test_directory_path_scanned_recursively(self, tmp_path):
+        game_dir = tmp_path / "GameData"
+        game_dir.mkdir()
+        cfg = game_dir / "options.ini"
+        cfg.write_text("[s]\nk=v", encoding="utf-8")
+        result = detect_config_files([str(game_dir)])
+        assert str(cfg) in result
+
+    def test_steam_userdata_path_excluded(self, tmp_path):
+        userdata_path = r"C:\Steam\userdata\12345\553850\remote\input.config"
+        cfg = tmp_path / "settings.cfg"
+        cfg.write_text("v=1", encoding="utf-8")
+        result = detect_config_files([userdata_path, str(cfg)])
+        # Windows userdata path must not appear; the real config file must appear
+        assert userdata_path not in result
+        assert str(cfg) in result
+
+    def test_directory_ignores_non_config_extensions(self, tmp_path):
+        game_dir = tmp_path / "GameData"
+        game_dir.mkdir()
+        (game_dir / "save.sav").write_text("binary", encoding="utf-8")
+        result = detect_config_files([str(game_dir)])
+        assert result == []
+
+    def test_mixed_file_and_directory(self, tmp_path):
+        cfg_file = tmp_path / "prefs.json"
+        cfg_file.write_text("{}", encoding="utf-8")
+        sub_dir = tmp_path / "sub"
+        sub_dir.mkdir()
+        sub_cfg = sub_dir / "extra.ini"
+        sub_cfg.write_text("[x]\n", encoding="utf-8")
+        result = detect_config_files([str(cfg_file), str(sub_dir)])
+        assert str(cfg_file) in result
+        assert str(sub_cfg) in result
