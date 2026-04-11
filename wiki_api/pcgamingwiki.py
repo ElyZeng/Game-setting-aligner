@@ -37,6 +37,32 @@ _PATH_TOKENS: dict = {
 }
 
 
+def _get_documents_path() -> str:
+    """Return the real My Documents folder path, respecting OneDrive redirection.
+
+    On Windows, My Documents may be redirected to OneDrive (e.g.
+    ``C:\\Users\\<user>\\OneDrive\\文件``).  Reading the path via the
+    Windows Shell API (``SHGetFolderPath`` / ``SHGetKnownFolderPath``) always
+    returns the current effective location.
+
+    Falls back to ``~/Documents`` on non-Windows or if the API is unavailable.
+    """
+    if os.name == "nt":
+        try:
+            import ctypes
+            import ctypes.wintypes
+
+            # CSIDL_PERSONAL = 0x0005 → My Documents
+            buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+            ctypes.windll.shell32.SHGetFolderPathW(None, 0x0005, None, 0, buf)
+            path = buf.value
+            if path and os.path.isdir(path):
+                return path
+        except Exception:
+            pass
+    return os.path.join(os.path.expanduser("~"), "Documents")
+
+
 def _get_steam_path() -> str:
     """Return the Steam installation path from the Windows registry, or ``""``."""
     if os.name != "nt":
@@ -72,7 +98,7 @@ _WIKI_TAG_MAP: dict = {
     "{{P|appdata}}": os.environ.get("APPDATA", os.path.expanduser("~/.config")),
     "{{P|localappdata}}": os.environ.get("LOCALAPPDATA", os.path.expanduser("~/.local/share")),
     "{{P|programdata}}": os.environ.get("PROGRAMDATA", "/usr/share"),
-    "{{P|documents}}": os.path.join(os.path.expanduser("~"), "Documents"),
+    "{{P|documents}}": _get_documents_path(),
     "{{P|uid}}": "*",  # Represents SteamID3; expanded to glob wildcard
     "{{P|game}}": "",  # Represents the game folder name
     "{{P|osxhome}}": os.path.expanduser("~"),
@@ -80,6 +106,10 @@ _WIKI_TAG_MAP: dict = {
     "{{P|xdgconfig}}": os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
     "{{P|xdgdata}}": os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
     "{{P|steam}}": _get_steam_path(),
+    # Compound tokens: some Wiki pages write {{P|base/subdir}} as a shorthand.
+    "{{P|userprofile/documents}}": _get_documents_path(),
+    "{{P|userprofile/appdata}}": os.environ.get("APPDATA", os.path.expanduser("~/.config")),
+    "{{P|userprofile/localappdata}}": os.environ.get("LOCALAPPDATA", os.path.expanduser("~/.local/share")),
 }
 
 # Registry path token prefixes – these are not filesystem paths
@@ -143,9 +173,16 @@ def _expand_path_tokens(path: str) -> str:
     6. Remove consecutive duplicate path segments (fixes double-``Roaming``
        that arises when a token already includes ``Roaming`` and the raw path
        appends ``\\Roaming\\`` again).
+    7. Convert separators to ``/`` so output is stable across platforms.
     """
-    # 1. Normalise {{p|...}} → {{P|...}} for case-insensitive tag matching
-    path = re.sub(r"\{\{p\|", "{{P|", path)
+    # 1. Normalise {{p|...}} or {{P|...}} → {{P|<lowercase content with / sep>}}
+    #    so tag lookups in _WIKI_TAG_MAP are case-insensitive and separator-agnostic.
+    #    This handles both {{P|userprofile/Documents}} and {{p|userprofile\Documents}}.
+    path = re.sub(
+        r"\{\{[Pp]\|([^{}]+)\}\}",
+        lambda m: "{{P|" + m.group(1).lower().replace("\\", "/") + "}}",
+        path,
+    )
 
     # 2. Expand Wiki template tags
     for tag, replacement in _WIKI_TAG_MAP.items():
@@ -163,6 +200,9 @@ def _expand_path_tokens(path: str) -> str:
 
     # 6. Remove consecutive duplicate segments (e.g. Roaming\Roaming)
     path = _remove_duplicate_path_segments(path)
+
+    # 7. Use forward slashes for deterministic cross-platform output.
+    path = path.replace("\\", "/")
 
     return path
 

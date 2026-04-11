@@ -293,6 +293,53 @@ class TestExpandPathTokensAdditional:
 
 
 # ---------------------------------------------------------------------------
+# Compound token tests ({{P|base/subdir}} style)
+# ---------------------------------------------------------------------------
+
+class TestCompoundTokenExpansion:
+    # Use the same helper the implementation uses so the test is valid on any
+    # locale / OneDrive setup (e.g. "文件" instead of "Documents").
+    from wiki_api.pcgamingwiki import _get_documents_path as _docs
+
+    def test_userprofile_documents_lowercase(self):
+        """{{P|userprofile/documents}} should expand to the real Documents folder."""
+        from wiki_api.pcgamingwiki import _get_documents_path
+        result = _expand_path_tokens("{{P|userprofile/documents}}/MyGame/settings.ini")
+        assert "{{P|" not in result
+        assert _get_documents_path().replace("\\", "/") in result
+        assert "MyGame" in result
+
+    def test_userprofile_documents_mixed_case(self):
+        """{{P|userprofile/Documents}} (capital D) should also expand correctly."""
+        from wiki_api.pcgamingwiki import _get_documents_path
+        result = _expand_path_tokens("{{P|userprofile/Documents}}/MyGame/settings.ini")
+        assert "{{P|" not in result
+        assert _get_documents_path().replace("\\", "/") in result
+        assert "MyGame" in result
+
+    def test_uppercase_P_documents(self):
+        """{{P|USERPROFILE/DOCUMENTS}} (all caps) should expand correctly."""
+        from wiki_api.pcgamingwiki import _get_documents_path
+        result = _expand_path_tokens("{{P|USERPROFILE/DOCUMENTS}}/Rockstar Games/RDR2")
+        assert "{{P|" not in result
+        assert _get_documents_path().replace("\\", "/") in result
+
+    def test_tag_content_case_insensitive(self):
+        """Tag content case should not affect expansion: {{P|UserProfile}} == {{P|userprofile}}."""
+        r1 = _expand_path_tokens("{{P|userprofile}}/Game")
+        r2 = _expand_path_tokens("{{P|UserProfile}}/Game")
+        assert r1 == r2
+
+    def test_known_games_compound_path(self):
+        """Paths mimicking Fallout 4 / Starfield wiki format should expand."""
+        from wiki_api.pcgamingwiki import _get_documents_path
+        result = _expand_path_tokens("{{P|userprofile/Documents}}/My Games/Fallout4")
+        assert "{{P|" not in result
+        assert _get_documents_path().replace("\\", "/") in result
+        assert "My Games" in result
+
+
+# ---------------------------------------------------------------------------
 # PCGamingWikiClient._query_mediawiki_raw tests (mocked)
 # ---------------------------------------------------------------------------
 
