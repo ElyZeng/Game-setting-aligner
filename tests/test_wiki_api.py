@@ -215,16 +215,16 @@ class TestParseGamedataConfig:
         assert len(raw) == 4
 
     def test_apex_legends_three_file_paths_in_expanded(self):
-        """3 file paths (not registry) should appear in expanded_paths."""
+        """4 paths (3 files + 1 registry) should appear in expanded_paths."""
         _, expanded = _parse_gamedata_config(_APEX_WIKITEXT)
-        assert len(expanded) == 3
+        assert len(expanded) == 4
 
-    def test_apex_legends_registry_path_not_in_expanded(self):
-        """Registry path {{P|hkcu}}\\... must not appear in expanded_paths."""
+    def test_apex_legends_registry_path_expanded_in_expanded(self):
+        """Registry path should be expanded to HKEY_CURRENT_USER\\... in expanded_paths."""
         _, expanded = _parse_gamedata_config(_APEX_WIKITEXT)
-        for path in expanded:
-            # Only file paths under Saved Games should appear; no registry keys
-            assert "hkcu" not in path.lower()
+        reg_paths = [p for p in expanded if p.startswith("HKEY_")]
+        assert len(reg_paths) == 1
+        assert "hkcu" not in reg_paths[0].lower()  # token should be expanded
 
     def test_apex_legends_raw_contains_registry(self):
         """Registry path must be preserved in raw_paths for diagnostics."""
@@ -234,8 +234,8 @@ class TestParseGamedataConfig:
     def test_apex_legends_expanded_contains_saved_games_paths(self):
         """Expanded paths should include the Saved Games sub-paths."""
         _, expanded = _parse_gamedata_config(_APEX_WIKITEXT)
-        # All three file paths are under Saved Games\Respawn\Apex
-        for path in expanded:
+        file_paths = [p for p in expanded if not p.startswith("HKEY_")]
+        for path in file_paths:
             assert "Respawn" in path or "Apex" in path
 
     def test_os_filter_excludes_non_windows(self):
@@ -425,9 +425,10 @@ class TestQueryMediawikiRaw:
 
         raw, expanded = client._query_mediawiki_raw("Apex Legends")
         assert len(raw) == 4, f"expected 4 raw paths, got {raw}"
-        assert len(expanded) == 3, f"expected 3 expanded paths, got {expanded}"
-        # All expanded paths should contain the Apex sub-directory
-        for path in expanded:
+        assert len(expanded) == 4, f"expected 4 expanded paths, got {expanded}"
+        # File expanded paths should contain the Apex sub-directory
+        file_paths = [p for p in expanded if not p.startswith("HKEY_")]
+        for path in file_paths:
             assert "Respawn" in path or "Apex" in path
 
     def test_query_mediawiki_raw_no_session(self, monkeypatch):
@@ -471,7 +472,7 @@ class TestQueryMediawikiRaw:
         result = client.get_config_info("Apex Legends")
         assert result["error"] is None
         assert len(result["raw_paths"]) == 4
-        assert len(result["expanded_paths"]) == 3
+        assert len(result["expanded_paths"]) == 4
         # settings.cfg and videoconfig.txt should be in raw_paths
         raw_str = " ".join(result["raw_paths"])
         assert "settings.cfg" in raw_str

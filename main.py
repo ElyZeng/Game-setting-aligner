@@ -9,6 +9,8 @@ Run this script to launch the GUI application::
 import sys
 import os
 
+__version__ = "0.04"
+
 # Ensure the project root is on the path so that all submodules are importable
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 if _ROOT not in sys.path:

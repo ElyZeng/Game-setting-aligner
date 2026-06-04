@@ -1,0 +1,70 @@
+# Changelog
+
+## v0.04 (2026-06-05)
+
+### New Features
+- **Key Settings Panel**: Added expandable settings panel in each GameRow showing 7 key graphics settings:
+  - Resolution, Screen Mode, VSync, Frame Limit, Dynamic Resolution, Upscaling, Frame Generation
+- **Settings Parser** (`config_manager/settings_parser.py`): New module with dedicated parsers for multiple config formats:
+  - `_parse_cyberpunk()` — JSON (Cyberpunk 2077 UserSettings.json)
+  - `_parse_unreal_ini()` — INI (Unreal Engine games like ARC Raiders)
+  - `_parse_forza_xml()` — XML (Forza Horizon 6 UserConfigSelections)
+  - `_parse_registry_json()` — Registry JSON (Horizon Zero Dawn Remastered, Shadow of the Tomb Raider)
+  - `_parse_cs2()` — Valve KeyValues (Counter-Strike 2 multi-file configs)
+- **Frosted Glass Dark Theme**: Full visual redesign with frosted glass dark theme for GUI
+- **English Labels**: All UI labels switched to English (`DISPLAY_NAMES_EN`)
+- **Simulation Tool** (`tools/simulate_gui.py`): Standalone GUI preview tool with frosted glass theme
+- **Config Import v2 Support**: `ConfigPackage.import_package()` now supports both v1 and v2 package formats
+
+### Bug Fixes
+- Fixed Cyberpunk 2077 VSync localization key display (now shows "Off"/"On" instead of raw `LocKey`)
+- Fixed Shadow of the Tomb Raider Frame Generation showing `None` instead of `N/A`
+- Fixed "Unsupported package version 2" error when importing configs exported by v0.04
+- Fixed v2 import to write raw content back to files (skips registry entries and binary files)
+
+### Verified Games (tested on real machine — MVT-PR4)
+
+| Game | Config Format | Key Settings Extracted |
+|------|--------------|----------------------|
+| Cyberpunk 2077 | JSON (`UserSettings.json`) | Resolution, Screen Mode, VSync, Frame Limit, Dynamic Resolution, Upscaling (XeSS), Frame Generation (XESS/MFG) |
+| ARC Raiders | Unreal INI (`GameUserSettings.ini`) | Resolution, Screen Mode, VSync, Frame Limit, Dynamic Resolution, Upscaling (XeSS), Frame Generation |
+| Forza Horizon 6 | XML (`UserConfigSelections`) | Resolution, Screen Mode, VSync, Frame Limit, Dynamic Resolution, Upscaling (XeSS), Frame Generation |
+| Horizon Zero Dawn™ Remastered | Registry + binary `profile.dat` | Resolution, Screen Mode, VSync, Frame Limit, Dynamic Resolution, Upscaling (XeSS), Frame Generation |
+| Counter-Strike 2 | Valve KV (`.vcfg` + `.txt`, multi-file) | Resolution, Screen Mode, VSync, Frame Limit, Dynamic Resolution (N/A), Upscaling, Frame Generation (N/A) |
+| Shadow of the Tomb Raider | Registry JSON | Resolution, Screen Mode, VSync, Frame Limit, Dynamic Resolution, Upscaling (XeSS), Frame Generation (N/A) |
+
+> **Note**: "Steamworks Common Redistributables" is detected by Steam but has no config files (expected behavior).
+
+### Files Changed
+- `main.py` — Version bump to 0.04
+- `config_manager/__init__.py` — Updated exports for new functions
+- `config_manager/settings_parser.py` — **NEW** Key settings extraction module
+- `config_manager/package.py` — Added v2 import support (`SUPPORTED_VERSIONS`, `_import_v2`)
+- `config_manager/config_exporter.py` — v2 export format with config file contents
+- `gui/app.py` — GameRow redesign with key settings panel, frosted glass theme, English labels
+- `tools/simulate_gui.py` — **NEW** Standalone GUI simulation tool
+- `wiki_api/pcgamingwiki.py` — Wiki API improvements
+- `tests/test_config_exporter.py` — Test updates
+- `tests/test_wiki_api.py` — Test updates
+- `validation/test6.json` — **NEW** Real machine test data (export)
+- `validation/test7.json` — **NEW** Real machine test data (import test)
+
+---
+
+## v0.03 (2026-06-04)
+
+- Wiki cache system for offline operation
+- Config file detection and status display in GUI
+- Path token expansion fixes and diagnostic tools
+
+## v0.02
+
+- Initial GUI with CustomTkinter
+- PCGamingWiki API integration
+- Config file reading/writing (JSON, XML, INI)
+
+## v0.01
+
+- Project scaffolding
+- Basic config reader/writer
+- PyInstaller packaging setup

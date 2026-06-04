@@ -8,18 +8,147 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 from typing import Any, Dict, List, Optional
+
+if platform.system() == "Windows":
+    import winreg
+else:
+    winreg = None  # type: ignore[assignment]
 
 # Maximum bytes to read from a single config file (512 KB)
 _MAX_FILE_BYTES = 512 * 1024
 
+# Byte threshold for binary detection: if more than this fraction of a
+# sample contains non-text bytes, the file is treated as binary.
+_BINARY_CHECK_SIZE = 8192
+_BINARY_THRESHOLD = 0.10
+
 # Extensions treated as config/settings files when scanning directories
 _CONFIG_EXTENSIONS = frozenset(
-    {".ini", ".cfg", ".config", ".json", ".xml", ".txt"}
+    {".ini", ".cfg", ".config", ".json", ".xml", ".txt",
+     ".dat", ".vcfg", ".toml", ".yaml", ".yml"}
 )
 
 # Default maximum directory scan depth
 _DIR_SCAN_DEPTH = 2
+
+# Registry root key name → winreg constant mapping
+_REGISTRY_ROOTS: Dict[str, Any] = {}
+if winreg is not None:
+    _REGISTRY_ROOTS = {
+        "HKEY_CURRENT_USER": winreg.HKEY_CURRENT_USER,
+        "HKEY_LOCAL_MACHINE": winreg.HKEY_LOCAL_MACHINE,
+        "HKEY_CLASSES_ROOT": winreg.HKEY_CLASSES_ROOT,
+        "HKEY_USERS": winreg.HKEY_USERS,
+        "HKEY_CURRENT_CONFIG": winreg.HKEY_CURRENT_CONFIG,
+    }
+
+
+def _is_expanded_registry_path(path: str) -> bool:
+    """Return ``True`` if *path* is an expanded Windows registry path."""
+    return any(path.startswith(root) for root in _REGISTRY_ROOTS)
+
+
+def _read_registry_key(reg_path: str) -> Dict[str, Any]:
+    """Read all values under a Windows registry key.
+
+    Returns a dict with ``found``, ``content`` (dict of value-name → value),
+    and ``error`` keys.
+    """
+    entry: Dict[str, Any] = {
+        "type": "registry",
+        "registry_path": reg_path,
+        "found": False,
+        "content": None,
+        "error": None,
+    }
+    if winreg is None:
+        entry["error"] = "registry_not_available"
+        return entry
+
+    # Parse root key and subkey
+    parts = reg_path.split("\\", 1)
+    root_name = parts[0]
+    subkey = parts[1] if len(parts) > 1 else ""
+
+    root_handle = _REGISTRY_ROOTS.get(root_name)
+    if root_handle is None:
+        entry["error"] = f"unknown_root_key: {root_name}"
+        return entry
+
+    # Try the exact subkey first, then enumerate sub-keys one level deep
+    all_values: Dict[str, Any] = {}
+    found_any = False
+
+    # Read values from the key itself
+    try:
+        with winreg.OpenKey(root_handle, subkey, 0, winreg.KEY_READ) as key:
+            found_any = True
+            i = 0
+            while True:
+                try:
+                    name, value, _ = winreg.EnumValue(key, i)
+                    all_values[name or "(Default)"] = value
+                    i += 1
+                except OSError:
+                    break
+    except FileNotFoundError:
+        pass
+    except PermissionError:
+        entry["error"] = "permission_denied"
+        return entry
+
+    # Enumerate immediate sub-keys and read their values too
+    try:
+        with winreg.OpenKey(root_handle, subkey, 0, winreg.KEY_READ) as key:
+            sub_idx = 0
+            while True:
+                try:
+                    sub_name = winreg.EnumKey(key, sub_idx)
+                    sub_idx += 1
+                    sub_values: Dict[str, Any] = {}
+                    try:
+                        with winreg.OpenKey(key, sub_name, 0, winreg.KEY_READ) as sk:
+                            j = 0
+                            while True:
+                                try:
+                                    vname, vval, _ = winreg.EnumValue(sk, j)
+                                    sub_values[vname or "(Default)"] = vval
+                                    j += 1
+                                except OSError:
+                                    break
+                    except (FileNotFoundError, PermissionError):
+                        pass
+                    if sub_values:
+                        all_values[sub_name] = sub_values
+                        found_any = True
+                except OSError:
+                    break
+    except (FileNotFoundError, PermissionError):
+        pass
+
+    if found_any:
+        entry["found"] = True
+        entry["content"] = json.dumps(all_values, indent=2, ensure_ascii=False, default=str)
+    else:
+        entry["error"] = "key_not_found"
+
+    return entry
+
+
+def _is_binary_file(path: str) -> bool:
+    """Return ``True`` if *path* appears to be a binary (non-text) file."""
+    try:
+        with open(path, "rb") as fh:
+            chunk = fh.read(_BINARY_CHECK_SIZE)
+        if not chunk:
+            return False
+        # Count bytes that are not printable ASCII / common whitespace
+        non_text = sum(1 for b in chunk if b < 8 or (13 < b < 32 and b != 27))
+        return (non_text / len(chunk)) > _BINARY_THRESHOLD
+    except OSError:
+        return False
 
 
 def _try_read_file(path: str) -> Dict[str, Any]:
@@ -51,6 +180,9 @@ def _try_read_file(path: str) -> Dict[str, Any]:
             entry["error"] = "path_not_found"
             return entry
         entry["found"] = True
+        if _is_binary_file(path):
+            entry["error"] = "binary_file"
+            return entry
         size = os.path.getsize(path)
         with open(path, "r", encoding="utf-8", errors="replace") as fh:
             if size > _MAX_FILE_BYTES:
@@ -108,6 +240,15 @@ def _scan_directory(dir_path: str, max_depth: int = _DIR_SCAN_DEPTH) -> List[str
                         ext = os.path.splitext(entry.name)[1].lower()
                         if ext in _CONFIG_EXTENSIONS:
                             found.append(entry.path)
+                        elif ext == "":
+                            # Extensionless file: include if it is a text file
+                            # (not binary) and small enough.
+                            try:
+                                size = entry.stat().st_size
+                                if 0 < size <= _MAX_FILE_BYTES and not _is_binary_file(entry.path):
+                                    found.append(entry.path)
+                            except OSError:
+                                pass
         except OSError:
             pass
 
@@ -133,9 +274,10 @@ def detect_config_files(expanded_paths: List[str]) -> List[str]:
     """
     found: List[str] = []
     for path in expanded_paths:
-        if _is_steam_userdata_path(path):
-            continue
-        if os.path.isdir(path):
+        if _is_expanded_registry_path(path):
+            # Registry paths are always "found" – actual reading happens at export time
+            found.append(path)
+        elif os.path.isdir(path):
             found.extend(_scan_directory(path))
         elif os.path.isfile(path):
             found.append(path)
@@ -230,11 +372,9 @@ class ConfigExporter:
             expanded_paths: List[str] = wiki_result.get("expanded_paths") or []
             config_files: List[Dict[str, Any]] = []
             for path in expanded_paths:
-                # Steam userdata paths are kept in expanded_paths for diagnostics
-                # but their file content is excluded from config_files (decision 1a).
-                if _is_steam_userdata_path(path):
-                    continue
-                if os.path.isdir(path):
+                if _is_expanded_registry_path(path):
+                    config_files.append(_read_registry_key(path))
+                elif os.path.isdir(path):
                     # Wiki returned a folder path – scan for config files
                     for file_path in _scan_directory(path):
                         config_files.append(_try_read_file(file_path))

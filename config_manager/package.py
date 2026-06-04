@@ -31,7 +31,7 @@ class ConfigPackage:
         }
     """
 
-    FORMAT_VERSION = 1
+    SUPPORTED_VERSIONS = {1, 2}
 
     def __init__(self) -> None:
         self._reader = ConfigReader()
@@ -49,7 +49,7 @@ class ConfigPackage:
             ``backup.json``).
         """
         package: Dict[str, Any] = {
-            "version": self.FORMAT_VERSION,
+            "version": 1,
             "games": {},
         }
 
@@ -84,10 +84,14 @@ class ConfigPackage:
         with open(package_path, "r", encoding="utf-8") as f:
             package: Dict[str, Any] = json.load(f)
 
-        if package.get("version") != self.FORMAT_VERSION:
+        pkg_version = package.get("version")
+        if pkg_version not in self.SUPPORTED_VERSIONS:
             raise ValueError(
-                f"Unsupported package version: {package.get('version')}"
+                f"Unsupported package version: {pkg_version}"
             )
+
+        if pkg_version == 2:
+            return self._import_v2(package)
 
         restored: Dict[str, List[str]] = {}
         for game_name, game_data in package.get("games", {}).items():
@@ -98,6 +102,38 @@ class ConfigPackage:
                 try:
                     self._writer.write(data, config_path)
                     restored_paths.append(config_path)
+                except Exception:
+                    pass
+            restored[game_name] = restored_paths
+
+        return restored
+
+    def _import_v2(self, package: Dict[str, Any]) -> Dict[str, List[str]]:
+        """Restore config files from a version-2 package (ConfigExporter format).
+
+        Version 2 stores each config file as a dict with ``expanded_path``,
+        ``content``, ``found``, ``error``, and optionally ``type`` keys.
+        Registry entries are skipped (cannot be written back easily).
+        """
+        restored: Dict[str, List[str]] = {}
+        for game_name, game_data in package.get("games", {}).items():
+            restored_paths: List[str] = []
+            config_files = game_data.get("config_files", [])
+            for cfg in config_files:
+                # Skip registry entries – we can't write back to the registry
+                if cfg.get("type") == "registry":
+                    continue
+                path = cfg.get("expanded_path", "")
+                content = cfg.get("content")
+                if not path or not content:
+                    continue
+                if cfg.get("error"):
+                    continue
+                try:
+                    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+                    with open(path, "w", encoding="utf-8") as fh:
+                        fh.write(content)
+                    restored_paths.append(path)
                 except Exception:
                     pass
             restored[game_name] = restored_paths

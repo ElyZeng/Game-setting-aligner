@@ -1,0 +1,89 @@
+{
+  "version": 2,
+  "games": {
+    "Cyberpunk 2077": {
+      "detected_install_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Cyberpunk 2077",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Cyberpunk 2077",
+        "url": "https://www.pcgamingwiki.com/wiki/Cyberpunk_2077",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "ARC Raiders": {
+      "detected_install_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Arc Raiders",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "ARC Raiders",
+        "url": "https://www.pcgamingwiki.com/wiki/ARC_Raiders",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "Steamworks Common Redistributables": {
+      "detected_install_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Steamworks Shared",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Steamworks Common Redistributables",
+        "url": "https://www.pcgamingwiki.com/wiki/Steamworks_Common_Redistributables",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "Forza Horizon 6": {
+      "detected_install_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\ForzaHorizon6",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Forza Horizon 6",
+        "url": "https://www.pcgamingwiki.com/wiki/Forza_Horizon_6",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "Horizon Zero Dawn™ Remastered": {
+      "detected_install_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Horizon Zero Dawn Remastered",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Horizon Zero Dawn™ Remastered",
+        "url": "https://www.pcgamingwiki.com/wiki/Horizon_Zero_Dawn™_Remastered",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "Counter-Strike 2": {
+      "detected_install_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Counter-Strike 2",
+        "url": "https://www.pcgamingwiki.com/wiki/Counter-Strike_2",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "Shadow of the Tomb Raider": {
+      "detected_install_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Shadow of the Tomb Raider",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Shadow of the Tomb Raider",
+        "url": "https://www.pcgamingwiki.com/wiki/Shadow_of_the_Tomb_Raider",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    }
+  }
+}

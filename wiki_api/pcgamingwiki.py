@@ -9,7 +9,12 @@ from __future__ import annotations
 import glob as _glob_module
 import re
 import os
+import sys
 from typing import Any, Dict, List, Optional, Tuple
+
+import json
+
+import unicodedata
 
 try:
     import requests  # type: ignore
@@ -20,6 +25,12 @@ try:
     from bs4 import BeautifulSoup  # type: ignore
 except ImportError:  # pragma: no cover
     BeautifulSoup = None  # type: ignore
+
+# Default cache file location (relative to the project root).
+# When running from a PyInstaller bundle, look inside the temp extraction dir.
+_BASE_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_CACHE_DIR = os.path.join(_BASE_DIR, "cache")
+_CACHE_FILE = os.path.join(_CACHE_DIR, "wiki_cache.json")
 
 # PCGamingWiki Cargo API endpoint
 _API_URL = "https://www.pcgamingwiki.com/w/api.php"
@@ -114,6 +125,26 @@ _WIKI_TAG_MAP: dict = {
 
 # Registry path token prefixes – these are not filesystem paths
 _REGISTRY_TOKENS: tuple = ("{{p|hkcu}}", "{{p|hklm}}", "{{p|hkcr}}", "{{p|hku}}", "{{p|hkcc}}")
+
+# Mapping from wiki registry tokens to Windows registry root key names
+_REGISTRY_TOKEN_MAP: dict = {
+    "{{p|hkcu}}": "HKEY_CURRENT_USER",
+    "{{p|hklm}}": "HKEY_LOCAL_MACHINE",
+    "{{p|hkcr}}": "HKEY_CLASSES_ROOT",
+    "{{p|hku}}": "HKEY_USERS",
+    "{{p|hkcc}}": "HKEY_CURRENT_CONFIG",
+}
+
+
+def _expand_registry_token(raw: str) -> Optional[str]:
+    """Expand a wiki registry path like ``{{p|hkcu}}\\Software\\...`` to
+    ``HKEY_CURRENT_USER\\Software\\...``.  Returns *None* if the token
+    is not recognized."""
+    raw_lower = raw.lower()
+    for tok, root in _REGISTRY_TOKEN_MAP.items():
+        if raw_lower.startswith(tok):
+            return root + raw[len(tok):]
+    return None
 
 
 def _remove_duplicate_path_segments(path: str) -> str:
@@ -310,14 +341,30 @@ def _parse_gamedata_config(
         if len(parts) < 3:
             continue
         os_name = parts[1].strip()
-        if os_filter.lower() not in os_name.lower():
-            continue
+        if os_filter:
+            os_lower = os_name.lower()
+            filter_lower = os_filter.lower()
+            # Accept "Windows", "Steam", "Epic Games Launcher",
+            # "Microsoft Store", "GOG.com" as Windows-compatible platforms.
+            _WINDOWS_COMPATIBLE = {
+                "windows", "steam", "epic games launcher",
+                "microsoft store", "gog.com", "gog",
+            }
+            if filter_lower == "windows":
+                if os_lower not in _WINDOWS_COMPATIBLE and filter_lower not in os_lower:
+                    continue
+            elif filter_lower not in os_lower:
+                continue
         for raw in parts[2:]:
             raw = raw.strip()
             if not raw:
                 continue
             raw_paths.append(raw)
-            if not _is_registry_path(raw):
+            if _is_registry_path(raw):
+                reg = _expand_registry_token(raw)
+                if reg is not None:
+                    expanded_paths.append(reg)
+            else:
                 expanded = _expand_path_tokens(raw)
                 resolved = _resolve_uid_glob(expanded)
                 if resolved is not None:
@@ -328,13 +375,67 @@ def _parse_gamedata_config(
 class PCGamingWikiClient:
     """Client for querying PCGamingWiki for game configuration paths."""
 
-    def __init__(self, timeout: int = 10) -> None:
+    def __init__(self, timeout: int = 10, cache_path: Optional[str] = None) -> None:
         self.timeout = timeout
         self._session = requests.Session() if requests else None
         if self._session:
             self._session.headers.update(
                 {"User-Agent": "GameSettingAligner/1.0 (https://github.com/ElyZeng/Game-setting-aligner)"}
             )
+        self._cache: Dict[str, Any] = {}
+        self._cache_path = cache_path or _CACHE_FILE
+        self._load_cache()
+
+    def _load_cache(self) -> None:
+        """Load the offline wiki cache from disk if available."""
+        if os.path.isfile(self._cache_path):
+            try:
+                with open(self._cache_path, "r", encoding="utf-8") as f:
+                    self._cache = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                self._cache = {}
+
+    @staticmethod
+    def _normalize_title(title: str) -> str:
+        """Normalize a game title for cache comparison.
+
+        Strips trademark/copyright symbols (™ ® ©), collapses whitespace,
+        and lowercases for fuzzy matching.
+        """
+        # Remove ™ ® © and other common symbol characters
+        cleaned = re.sub(r'[\u2122\u00AE\u00A9]', '', title)
+        # Normalize unicode (e.g. accented chars)
+        cleaned = unicodedata.normalize('NFKD', cleaned)
+        # Collapse whitespace
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return cleaned.lower()
+
+    def _lookup_cache(self, game_title: str) -> Optional[Dict[str, Any]]:
+        """Look up *game_title* in the offline cache (case-insensitive, symbol-tolerant)."""
+        # Exact match first
+        if game_title in self._cache:
+            return self._cache[game_title]
+        # Normalized fuzzy match
+        normalized = self._normalize_title(game_title)
+        for key, value in self._cache.items():
+            if self._normalize_title(key) == normalized:
+                return value
+        return None
+
+    def _expand_cached_raw_paths(self, raw_paths: List[str]) -> List[str]:
+        """Expand raw cached paths to local OS paths."""
+        expanded: List[str] = []
+        for raw in raw_paths:
+            if _is_registry_path(raw):
+                reg = _expand_registry_token(raw)
+                if reg is not None:
+                    expanded.append(reg)
+                continue
+            exp = _expand_path_tokens(raw)
+            resolved = _resolve_uid_glob(exp)
+            if resolved is not None:
+                expanded.append(resolved)
+        return expanded
 
     def search_game(self, title: str) -> Optional[str]:
         """Return the PCGamingWiki page title for the given game, or None."""
@@ -360,10 +461,14 @@ class PCGamingWikiClient:
     def get_config_paths(self, game_title: str) -> List[str]:
         """Return a list of expanded config file paths for the given game title.
 
-        Uses the PCGamingWiki Cargo API to query the ``Config_game_data`` table.
-        Falls back to the MediaWiki API (wikitext parsing) and then to HTML
-        scraping if the Cargo query returns no results.
+        Checks the offline cache first, then falls back to online queries
+        (Cargo → MediaWiki wikitext → HTML scraping).
         """
+        # Try offline cache first
+        cached = self._lookup_cache(game_title)
+        if cached and cached.get("raw_paths"):
+            return self._expand_cached_raw_paths(cached["raw_paths"])
+
         _, expanded = self._query_cargo_raw(game_title)
         if not expanded:
             _, expanded = self._query_mediawiki_raw(game_title)
@@ -397,6 +502,16 @@ class PCGamingWikiClient:
             "expanded_paths": [],
             "error": None,
         }
+        # Try offline cache first
+        cached = self._lookup_cache(game_title)
+        if cached and cached.get("raw_paths"):
+            result["raw_paths"] = cached["raw_paths"]
+            result["expanded_paths"] = self._expand_cached_raw_paths(cached["raw_paths"])
+            if cached.get("page_title"):
+                result["page_title"] = cached["page_title"]
+                result["url"] = _WIKI_BASE + cached["page_title"].replace(" ", "_")
+            return result
+
         if self._session is None:
             result["error"] = "requests library not available"
             return result
@@ -441,7 +556,11 @@ class PCGamingWikiClient:
                 raw_path = result.get("title", {}).get("Path", "")
                 if raw_path:
                     raw_paths.append(raw_path)
-                    if not _is_registry_path(raw_path):
+                    if _is_registry_path(raw_path):
+                        reg = _expand_registry_token(raw_path)
+                        if reg is not None:
+                            expanded_paths.append(reg)
+                    else:
                         expanded = _expand_path_tokens(raw_path)
                         resolved = _resolve_uid_glob(expanded)
                         if resolved is not None:

@@ -1,0 +1,158 @@
+{
+  "Cyberpunk 2077": {
+    "page_title": "Cyberpunk 2077",
+    "raw_paths": [
+      "{{P|localappdata}}\\CD Projekt Red\\Cyberpunk 2077"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Forza Horizon 5": {
+    "page_title": "Forza Horizon 5",
+    "raw_paths": [
+      "{{P|localappdata}}\\Packages\\Microsoft.624F8B84B80_8wekyb3d8bbwe\\LocalCache\\Local\\User_GamingLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\",
+      "{{P|localappdata}}\\ForzaHorizon5\\User_GamingLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki-manual"
+  },
+  "Red Dead Redemption 2": {
+    "page_title": "Red Dead Redemption 2",
+    "raw_paths": [
+      "{{P|userprofile\\Documents}}\\Rockstar Games\\Red Dead Redemption 2\\Settings\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Battlefield 6": {
+    "page_title": "Battlefield 6",
+    "raw_paths": [
+      "{{P|userprofile\\Documents}}\\Battlefield 6\\settings\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Call of Duty: Black Ops 7": {
+    "page_title": "Call of Duty: Black Ops 7",
+    "raw_paths": [
+      "{{P|AppData}}\\Local\\Activision\\Call of Duty\\players"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "F1 25": {
+    "page_title": "F1 25",
+    "raw_paths": [
+      "{{p|userprofile\\documents}}\\My Games\\F1 25\\hardwaresettings"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Black Myth: Wukong": {
+    "page_title": "Black Myth: Wukong",
+    "raw_paths": [
+      "{{p|localappdata}}\\b1\\Saved\\Config\\Windows\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Assassin's Creed Shadows": {
+    "page_title": "Assassin's Creed Shadows",
+    "raw_paths": [
+      "{{P|userprofile\\Documents}}\\Assassin's Creed Shadows\\ACShadows.ini"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Horizon Zero Dawn Remastered": {
+    "page_title": "Horizon Zero Dawn Remastered",
+    "raw_paths": [
+      "{{p|userprofile\\documents}}\\Horizon Zero Dawn Remastered\\",
+      "{{p|hkcu}}\\Software\\Guerrilla Games\\Horizon Zero Dawn Remastered\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Doom: The Dark Ages": {
+    "page_title": "Doom: The Dark Ages",
+    "raw_paths": [
+      "{{p|userprofile}}\\Saved Games\\id Software\\DOOMTheDarkAges\\base\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Diablo IV": {
+    "page_title": "Diablo IV",
+    "raw_paths": [
+      "{{p|userprofile}}\\Documents\\Diablo IV\\LocalPrefs.txt"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Final Fantasy XIV: Dawntrail": {
+    "page_title": "Final Fantasy XIV Online",
+    "raw_paths": [
+      "{{p|userprofile\\Documents}}\\My Games\\FINAL FANTASY XIV\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Grand Theft Auto V": {
+    "page_title": "Grand Theft Auto V",
+    "raw_paths": [
+      "{{P|userprofile\\Documents}}\\Rockstar Games\\GTA V\\settings.xml"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Returnal": {
+    "page_title": "Returnal",
+    "raw_paths": [
+      "{{P|localappdata}}\\Returnal\\Steam\\Saved\\Config",
+      "{{P|localappdata}}\\Returnal\\Epic\\Saved\\Config"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki-manual"
+  },
+  "ARC Raiders": {
+    "page_title": "ARC Raiders",
+    "raw_paths": [
+      "{{p|localappdata}}\\PioneerGame\\Saved\\Config\\WindowsClient"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Fortnite": {
+    "page_title": "Fortnite",
+    "raw_paths": [
+      "{{p|localappdata}}\\FortniteGame\\Saved\\Config\\WindowsClient"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Forza Horizon 6": {
+    "page_title": "Forza Horizon 6",
+    "raw_paths": [
+      "{{P|localappdata}}\\ForzaHorizon6\\LocalStorage_Shared\\ForzaUserConfigSelections\\UserConfigSelections"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Counter-Strike 2": {
+    "page_title": "Counter-Strike 2",
+    "raw_paths": [
+      "{{P|steam}}\\userdata\\{{P|uid}}\\730\\local\\cfg\\",
+      "{{P|steam}}\\userdata\\{{P|uid}}\\730\\remote\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Shadow of the Tomb Raider": {
+    "page_title": "Shadow of the Tomb Raider",
+    "raw_paths": [
+      "{{p|hkcu}}\\Software\\Eidos Montreal\\Shadow of the Tomb Raider\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  }
+}

@@ -340,16 +340,18 @@ class TestScanDirectory:
 # ConfigExporter – userdata exclusion and directory scanning
 # ---------------------------------------------------------------------------
 
-class TestConfigExporterUserdataExclusion:
-    def test_userdata_path_excluded_from_config_files(self, tmp_path):
-        """Steam userdata path must not appear in config_files."""
-        userdata_path = r"C:\Steam\userdata\12345\553850\remote\input.config"
+class TestConfigExporterUserdataInclusion:
+    def test_userdata_path_included_in_config_files(self, tmp_path):
+        """Steam userdata path must now appear in config_files."""
+        userdata_cfg = tmp_path / "userdata" / "12345" / "input.config"
+        userdata_cfg.parent.mkdir(parents=True)
+        userdata_cfg.write_text("bind=x", encoding="utf-8")
         normal_path = str(tmp_path / "settings.cfg")
         (tmp_path / "settings.cfg").write_text("v=1", encoding="utf-8")
 
         mock_wiki = _make_wiki_mock(
-            raw_paths=[userdata_path, normal_path],
-            expanded_paths=[userdata_path, normal_path],
+            raw_paths=[str(userdata_cfg), normal_path],
+            expanded_paths=[str(userdata_cfg), normal_path],
         )
         exporter = ConfigExporter(wiki_client=mock_wiki)
         output = str(tmp_path / "out.json")
@@ -359,18 +361,18 @@ class TestConfigExporterUserdataExclusion:
             data = json.load(f)
 
         game = data["games"]["Game"]
-        # expanded_paths still contains userdata path (diagnostic)
-        assert any("userdata" in p.lower() for p in game["pcgamingwiki"]["expanded_paths"])
-        # config_files must NOT contain the Steam userdata entry
         cfg_paths = [e["expanded_path"] for e in game["config_files"]]
-        assert userdata_path not in cfg_paths
+        assert str(userdata_cfg) in cfg_paths
+        assert normal_path in cfg_paths
 
     def test_userdata_path_present_in_expanded_paths(self, tmp_path):
         """Steam userdata path must remain in pcgamingwiki.expanded_paths."""
-        userdata_path = r"C:\Steam\userdata\12345\553850\remote\input.config"
+        userdata_cfg = tmp_path / "userdata" / "12345" / "input.config"
+        userdata_cfg.parent.mkdir(parents=True)
+        userdata_cfg.write_text("bind=y", encoding="utf-8")
         mock_wiki = _make_wiki_mock(
-            raw_paths=[userdata_path],
-            expanded_paths=[userdata_path],
+            raw_paths=[str(userdata_cfg)],
+            expanded_paths=[str(userdata_cfg)],
         )
         exporter = ConfigExporter(wiki_client=mock_wiki)
         output = str(tmp_path / "out.json")
@@ -380,8 +382,8 @@ class TestConfigExporterUserdataExclusion:
             data = json.load(f)
 
         game = data["games"]["Game"]
-        assert userdata_path in game["pcgamingwiki"]["expanded_paths"]
-        assert game["config_files"] == []
+        assert str(userdata_cfg) in game["pcgamingwiki"]["expanded_paths"]
+        assert len(game["config_files"]) == 1
 
     def test_non_userdata_path_included_in_config_files(self, tmp_path):
         """Non-userdata expanded path must still be read into config_files."""
