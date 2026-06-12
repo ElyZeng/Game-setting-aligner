@@ -154,5 +154,258 @@
     ],
     "expanded_paths": [],
     "source": "mediawiki"
+  },
+  "Hades II": {
+    "page_title": "Hades II",
+    "raw_paths": [
+      "{{p|userprofile}}\\\\Saved Games\\\\Hades II\\\\GlobalSettingsWin.sjson",
+      "{{P|localappdata}}\\\\Packages\\\\SupergiantGamesLLC.HadesII_q53c1yqmx7pha\\\\SystemAppData\\\\wgs\\\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Apex Legends": {
+    "page_title": "Apex Legends",
+    "raw_paths": [
+      "{{P|userprofile}}\\\\Saved Games\\\\Respawn\\\\Apex\\\\local\\\\settings.cfg",
+      "{{P|userprofile}}\\\\Saved Games\\\\Respawn\\\\Apex\\\\local\\\\videoconfig.txt",
+      "{{P|userprofile}}\\\\Saved Games\\\\Respawn\\\\Apex\\\\profile\\\\profile.cfg"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Baldur's Gate 3": {
+    "page_title": "Baldur's Gate 3",
+    "raw_paths": [
+      "{{p|localappdata}}\\Larian Studios\\Baldur's Gate 3\\PlayerProfiles\\",
+      "{{p|localappdata}}\\Larian Studios\\Baldur's Gate 3\\graphicSettings.lsx",
+      "{{p|localappdata}}\\Larian Studios\\Baldur's Gate 3\\analytics.lsx",
+      "{{p|localappdata}}\\Larian Studios\\Baldur's Gate 3\\imgui.ini"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Total War: Warhammer III": {
+    "page_title": "Total War: Warhammer III",
+    "raw_paths": [
+      "{{p|appdata}}\\The Creative Assembly\\Warhammer3\\scripts\\",
+      "{{p|appdata}}\\The Creative Assembly\\Warhammer3\\GDK\\scripts\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Horizon Zero Dawn": {
+    "page_title": "Horizon Zero Dawn",
+    "raw_paths": [
+      "{{P|userprofile\\Documents}}\\Horizon Zero Dawn\\Saved Game\\profile\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Naraka: Bladepoint": {
+    "page_title": "Naraka: Bladepoint",
+    "raw_paths": [
+      "{{p|game}}\\NarakaBladepoint_Data\\QualitySettingsData.txt",
+      "{{P|hkcu}}\\SOFTWARE\\24Entertainment\\Naraka"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Elden Ring": {
+    "page_title": "Elden Ring",
+    "raw_paths": [
+      "{{p|appdata}}\\EldenRing\\GraphicsConfig.xml"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Sons of the Forest": {
+    "page_title": "Sons of the Forest",
+    "raw_paths": [
+      "{{p|userprofile\\appdata\\locallow}}\\Endnight\\SonsOfTheForest\\SonsGameSettings.cfg"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Street Fighter 6": {
+    "page_title": "Street Fighter 6",
+    "raw_paths": [
+      "{{P|game}}\\config.ini"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Palworld": {
+    "page_title": "Palworld",
+    "raw_paths": [
+      "{{p|localappdata}}\\Pal\\Saved\\Config\\Windows\\",
+      "{{p|localappdata}}\\Pal\\Saved\\Config\\WinGDK\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Starfield": {
+    "page_title": "Starfield",
+    "raw_paths": [
+      "{{p|userprofile\\Documents}}\\My Games\\Starfield\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Nine Sols": {
+    "page_title": "Nine Sols",
+    "raw_paths": [
+      "{{p|hkcu}}\\SOFTWARE\\RedCandleGames\\NineSols"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "The Finals": {
+    "page_title": "The Finals",
+    "raw_paths": [
+      "{{p|localappdata}}\\Discovery\\Saved\\Config\\WindowsClient\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "EA Sports FC 24": {
+    "page_title": "EA Sports FC 24",
+    "raw_paths": [
+      "{{p|userprofile\\Documents}}\\FC 24\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Horizon Forbidden West": {
+    "page_title": "Horizon Forbidden West Complete Edition",
+    "raw_paths": [
+      "{{p|hkcu}}\\Software\\Guerrilla Games\\Horizon Forbidden West Complete Edition",
+      "{{p|userprofile\\documents}}\\Horizon Forbidden West Complete Edition\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "F1 24": {
+    "page_title": "F1 24",
+    "raw_paths": [
+      "{{P|userprofile\\Documents}}\\My Games\\F1 24\\hardwaresettings\\hardware_settings_config.xml"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Marvel Rivals": {
+    "page_title": "Marvel Rivals",
+    "raw_paths": [
+      "{{P|localappdata}}\\Marvel\\Saved\\Config\\Windows\\GameUserSettings.ini"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Strange Brigade": {
+    "page_title": "Strange Brigade",
+    "raw_paths": [
+      "{{p|localappdata}}\\Strange Brigade\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Monster Hunter Wilds": {
+    "page_title": "Monster Hunter Wilds",
+    "raw_paths": [
+      "{{P|game}}\\config.ini"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Tom Clancy's Rainbow Six Siege": {
+    "page_title": "Tom Clancy's Rainbow Six Siege",
+    "raw_paths": [
+      "{{P|userprofile\\Documents}}\\My Games\\Rainbow Six - Siege\\{{p|uid}}\\GameSettings.ini",
+      "{{p|hkcu}}\\Software\\Ubisoft\\Rainbow Six - Siege\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Fallout 4": {
+    "page_title": "Fallout 4",
+    "raw_paths": [
+      "{{p|userprofile\\Documents}}\\My Games\\Fallout4\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Dying Light 2": {
+    "page_title": "Dying Light 2 Stay Human",
+    "raw_paths": [
+      "{{p|userprofile\\Documents}}\\Dying Light 2\\out\\settings\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Helldivers 2": {
+    "page_title": "Helldivers 2",
+    "raw_paths": [
+      "{{P|appdata}}\\Arrowhead\\Helldivers2\\user_settings.config",
+      "{{P|steam}}/userdata/{{p|uid}}/553850/remote/input_settings.config"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Dota 2": {
+    "page_title": "Dota 2",
+    "raw_paths": [
+      "{{p|game}}/dota/cfg/"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "PUBG: Battlegrounds": {
+    "page_title": "PUBG: Battlegrounds",
+    "raw_paths": [
+      "{{p|localappdata}}\\TslGame\\Saved\\Config\\WindowsNoEditor\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Hogwarts Legacy": {
+    "page_title": "Hogwarts Legacy",
+    "raw_paths": [
+      "{{p|localappdata}}\\Hogwarts Legacy\\Saved\\Config\\WindowsNoEditor"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Hollow Knight: Silksong": {
+    "page_title": "Hollow Knight: Silksong",
+    "raw_paths": [
+      "{{p|hkcu}}\\Software\\Team Cherry\\Hollow Knight Silksong\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Metro Exodus": {
+    "page_title": "Metro Exodus",
+    "raw_paths": [
+      "{{p|userprofile}}\\Saved Games\\metro exodus\\"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Resident Evil 6": {
+    "page_title": "Resident Evil 6",
+    "raw_paths": [
+      "{{p|userprofile\\Documents}}\\capcom\\RESIDENT EVIL 6\\config.ini",
+      "{{p|userprofile\\Documents}}\\capcom\\RESIDENT EVIL 6\\mapping.ini"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
+  },
+  "Grand Theft Auto V Enhanced": {
+    "page_title": "Grand Theft Auto V Enhanced",
+    "raw_paths": [
+      "{{P|userprofile\\Documents}}\\Rockstar Games\\GTAV Enhanced\\settings.xml"
+    ],
+    "expanded_paths": [],
+    "source": "mediawiki"
   }
 }

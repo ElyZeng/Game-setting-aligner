@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.04.1 (2026-06-05)
+
+### Verified Games (tested on workstation)
+
+| Game | Config Found | Config Path |
+|------|-------------|-------------|
+| Baldur's Gate 3 | ✅ | `{{p|localappdata}}\Larian Studios\Baldur's Gate 3\graphicSettings.lsx` |
+| Cyberpunk 2077 | ✅ | `{{P|localappdata}}\CD Projekt Red\Cyberpunk 2077\UserSettings.json` |
+| Hades II | ✅ | `{{p|userprofile}}\Saved Games\Hades II\GlobalSettingsWin.sjson` |
+| Apex Legends | ✅ | `{{P|userprofile}}\Saved Games\Respawn\Apex\local\videoconfig.txt` (+ 2 more) |
+| Red Dead Redemption 2 | ✅ | `{{P|userprofile\Documents}}\Rockstar Games\Red Dead Redemption 2\Settings\system.xml` |
+| Black Myth: Wukong | ✅ | `{{p|localappdata}}\b1\Saved\Config\Windows\GameUserSettings.ini` (+ 26 more) |
+| Horizon Zero Dawn™ Remastered | ✅ | `{{p|userprofile\documents}}\Horizon Zero Dawn Remastered\profile.dat` |
+
+### Cache Updated
+- Added **Baldur's Gate 3**, **Hades II**, **Apex Legends** to `cache/wiki_cache.json`
+- Added 27 more games from PCGamingWiki verification: Total War: Warhammer III, Horizon Zero Dawn, Naraka: Bladepoint, Elden Ring, Sons of the Forest, Street Fighter 6, Palworld, Starfield, Nine Sols, The Finals, EA Sports FC 24, Horizon Forbidden West, F1 24, Marvel Rivals, Strange Brigade, Monster Hunter Wilds, Tom Clancy's Rainbow Six Siege, Fallout 4, Dying Light 2, Helldivers 2, Dota 2, PUBG: Battlegrounds, Hogwarts Legacy, Hollow Knight: Silksong, Metro Exodus, Resident Evil 6, Grand Theft Auto V Enhanced
+- Total cache: 49 games
+
+---
+
 ## v0.04 (2026-06-05)
 
 ### New Features
