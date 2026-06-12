@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.05 (2026-06-12)
+
+### New Features
+- **Settings Editor**: Each game's expandable panel now shows editable dropdown menus alongside the current value for all 7 key settings (Resolution, Screen Mode, VSync, Frame Limit, Dynamic Resolution, Upscaling, Frame Generation)
+- **Per-Game Apply**: "✏️ Apply Changes" button in each game's settings panel writes dropdown selections back to the actual config files on disk
+- **Batch Apply All**: "⚡ Batch Apply All" button in the action bar applies pending changes across all games at once
+- **Settings Writer Module** (`config_manager/settings_writer.py`): New module with format-specific writers:
+  - `_write_cyberpunk()` — JSON (Cyberpunk 2077 UserSettings.json)
+  - `_write_unreal_ini()` — INI (Unreal Engine games)
+  - `_write_forza_xml()` — XML (Forza Horizon series)
+  - `_write_registry_json()` — Registry (HZD Remastered, Shadow of the Tomb Raider)
+  - `_write_cs2_video()` — Valve KV (Counter-Strike 2)
+- **Setting Options** (`SETTING_OPTIONS`): Predefined dropdown choices for each setting key
+
+### Files Changed
+- `main.py` — Version bump to 0.05
+- `config_manager/__init__.py` — Export `SETTING_OPTIONS`, `write_settings`
+- `config_manager/settings_parser.py` — Added `SETTING_OPTIONS` dict
+- `config_manager/settings_writer.py` — **NEW** Settings write-back module
+- `gui/app.py` — GameRow dropdowns, Apply button, Batch Apply, wider window (960x650)
+
+---
+
 ## v0.04.1 (2026-06-05)
 
 ### Verified Games (tested on workstation)

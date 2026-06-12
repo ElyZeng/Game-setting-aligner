@@ -31,7 +31,9 @@ from config_manager.settings_parser import (
     ALL_KEYS,
     DISPLAY_NAMES,
     DISPLAY_NAMES_EN,
+    SETTING_OPTIONS,
 )
+from config_manager.settings_writer import write_settings
 
 
 # Sentinel used by GameRow.update_config_status to indicate a failed wiki lookup.
@@ -73,6 +75,8 @@ class GameRow:
         self.install_path = install_path
         self._expanded = False
         self._key_settings: Optional[Dict[str, Optional[str]]] = None
+        self._config_dicts: List[Dict[str, Any]] = []  # raw config file data for write-back
+        self._setting_vars: Dict[str, ctk.StringVar] = {}  # dropdown variables
 
         self.var = ctk.BooleanVar(value=False)
 
@@ -143,11 +147,12 @@ class GameRow:
         self._expanded = not self._expanded
 
     def _build_settings_panel(self) -> None:
-        """Populate the detail panel with key settings rows."""
+        """Populate the detail panel with key settings dropdowns."""
         # Clear previous content
         for w in self._detail_frame.winfo_children():
             w.destroy()
         self._setting_labels.clear()
+        self._setting_vars.clear()
 
         if not self._key_settings:
             return
@@ -157,7 +162,7 @@ class GameRow:
         grid_frame.pack(fill="x", padx=4, pady=4)
 
         for i, key in enumerate(ALL_KEYS):
-            col = 0 if i < 4 else 2
+            col = 0 if i < 4 else 3
             row = i if i < 4 else i - 4
 
             icon = self._SETTING_ICONS.get(key, "")
@@ -174,6 +179,7 @@ class GameRow:
             )
             name_label.grid(row=row, column=col, sticky="w", padx=(8, 2), pady=1)
 
+            # Current value label
             if value is None:
                 display_val = "—"
                 color = ("#999", "#555566")
@@ -190,10 +196,48 @@ class GameRow:
                 font=ctk.CTkFont(size=11),
                 text_color=color,
                 anchor="w",
-                width=180,
+                width=140,
             )
-            val_label.grid(row=row, column=col + 1, sticky="w", padx=(2, 16), pady=1)
+            val_label.grid(row=row, column=col + 1, sticky="w", padx=(2, 4), pady=1)
             self._setting_labels[key] = val_label
+
+            # Dropdown for changing
+            options = SETTING_OPTIONS.get(key, ["—"])
+            var = ctk.StringVar(value="—")
+            self._setting_vars[key] = var
+
+            dropdown = ctk.CTkOptionMenu(
+                grid_frame,
+                variable=var,
+                values=options,
+                width=120,
+                height=22,
+                font=ctk.CTkFont(size=10),
+                dropdown_font=ctk.CTkFont(size=10),
+                fg_color=("#c8c8d0", "#2a2a3d"),
+                button_color=("#b0b0b8", "#3a3a50"),
+                button_hover_color=("#a0a0a8", "#4a4a60"),
+                dropdown_fg_color=("#e0e0e0", "#222233"),
+                dropdown_hover_color=("#d0d0d8", "#333346"),
+                text_color=("#333", "#ccc"),
+            )
+            dropdown.grid(row=row, column=col + 2, sticky="w", padx=(2, 8), pady=1)
+
+        # Apply button row
+        btn_frame = ctk.CTkFrame(self._detail_frame, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=4, pady=(2, 4))
+
+        self._apply_btn = ctk.CTkButton(
+            btn_frame,
+            text="✏️  Apply Changes",
+            width=140,
+            height=26,
+            font=ctk.CTkFont(size=11),
+            fg_color=("#2b8a3e", "#2b6b3e"),
+            hover_color=("#237032", "#1f5530"),
+            command=self._apply_settings,
+        )
+        self._apply_btn.pack(side="right", padx=8)
 
     def update_key_settings(self, settings: Dict[str, Optional[str]]) -> None:
         """Update the key settings data and rebuild the panel."""
@@ -205,6 +249,65 @@ class GameRow:
             # Auto-expand to show settings
             if not self._expanded:
                 self._toggle_details()
+
+    def update_config_dicts(self, config_dicts: List[Dict[str, Any]]) -> None:
+        """Store the raw config file data for write-back."""
+        self._config_dicts = config_dicts
+
+    def get_pending_changes(self) -> Dict[str, Optional[str]]:
+        """Return a dict of settings the user has changed (dropdown != '—')."""
+        changes: Dict[str, Optional[str]] = {}
+        for key, var in self._setting_vars.items():
+            val = var.get()
+            if val != "—":
+                changes[key] = val
+        return changes
+
+    def _apply_settings(self) -> None:
+        """Apply the dropdown changes to this game's config files."""
+        changes = self.get_pending_changes()
+        if not changes:
+            messagebox.showinfo("No Changes", f"No settings changed for {self.game_name}.")
+            return
+
+        if not self._config_dicts:
+            messagebox.showwarning(
+                "No Config Data",
+                f"No config file data available for {self.game_name}.\n"
+                "Config files must be detected first.",
+            )
+            return
+
+        result = write_settings(self.game_name, self._config_dicts, changes)
+        ok_count = sum(1 for r in result if r["status"] == "ok")
+        errors = [r for r in result if r["status"] == "error"]
+
+        if errors:
+            msg = "\n".join(f"  • {e['path']}: {e['detail']}" for e in errors)
+            messagebox.showerror(
+                "Apply Failed",
+                f"Errors writing settings for {self.game_name}:\n{msg}",
+            )
+        elif ok_count > 0:
+            # Update the display labels to show the new values
+            for key, val in changes.items():
+                if key in self._setting_labels:
+                    self._setting_labels[key].configure(
+                        text=val, text_color=("#1a8a4a", "#5af0a0")
+                    )
+                # Update internal state
+                if self._key_settings:
+                    self._key_settings[key] = val
+            messagebox.showinfo(
+                "Applied",
+                f"Settings applied for {self.game_name} ({ok_count} file(s) updated).",
+            )
+        else:
+            messagebox.showinfo(
+                "No Files Written",
+                f"No config files were modified for {self.game_name}.\n"
+                "The game's config format may not be supported for writing yet.",
+            )
 
     def update_config_status(self, config_files: Any) -> None:
         """Update the config file status label.
@@ -252,9 +355,9 @@ class App:
         ctk.set_default_color_theme("blue")
 
         self.root = ctk.CTk()
-        self.root.title("Game Setting Aligner v0.04")
-        self.root.geometry("800x600")
-        self.root.minsize(600, 400)
+        self.root.title("Game Setting Aligner v0.05")
+        self.root.geometry("960x650")
+        self.root.minsize(800, 450)
 
         self._game_rows: List[GameRow] = []
         self._wiki_client = PCGamingWikiClient()
@@ -344,6 +447,16 @@ class App:
             command=self._import_config,
         )
         self._import_btn.pack(side="right", padx=8, pady=8)
+
+        self._batch_apply_btn = ctk.CTkButton(
+            action_bar,
+            text="⚡  Batch Apply All",
+            width=150,
+            fg_color=("#2b8a3e", "#2b6b3e"),
+            hover_color=("#237032", "#1f5530"),
+            command=self._batch_apply,
+        )
+        self._batch_apply_btn.pack(side="right", padx=4, pady=8)
 
         self._export_btn = ctk.CTkButton(
             action_bar,
@@ -450,8 +563,8 @@ class App:
             except Exception:
                 # Graceful degradation: network errors, timeouts, parsing
                 # failures, etc. should not crash the background thread.
-                return game_name, _UNABLE_TO_CHECK, None
-            return game_name, found_files, settings
+                return game_name, _UNABLE_TO_CHECK, None, []
+            return game_name, found_files, settings, config_dicts
 
         def _run_all() -> None:
             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
@@ -460,7 +573,7 @@ class App:
                 }
                 for future in concurrent.futures.as_completed(future_to_game):
                     try:
-                        game_name, result, settings = future.result()
+                        game_name, result, settings, config_dicts = future.result()
                     except Exception:
                         # Defensive catch: future.result() itself should not
                         # raise since _detect handles its own errors, but guard
@@ -469,12 +582,15 @@ class App:
                         game_name = getattr(game, "name", str(game))
                         result = _UNABLE_TO_CHECK
                         settings = None
+                        config_dicts = []
 
                     row = rows_by_name.get(game_name)
                     if row is not None:
                         self.root.after(0, row.update_config_status, result)
                         if settings is not None:
                             self.root.after(0, row.update_key_settings, settings)
+                        if config_dicts:
+                            self.root.after(0, row.update_config_dicts, config_dicts)
 
             # All done – update status bar back to a simple count
             self.root.after(
@@ -595,6 +711,64 @@ class App:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    def _batch_apply(self) -> None:
+        """Apply dropdown changes across all games that have pending changes."""
+        applicable = []
+        for row in self._game_rows:
+            changes = row.get_pending_changes()
+            if changes and row._config_dicts:
+                applicable.append(row)
+
+        if not applicable:
+            messagebox.showinfo(
+                "No Changes",
+                "No settings have been changed in any game's dropdown.\n"
+                "Use the dropdowns next to each setting to select new values.",
+            )
+            return
+
+        game_list = "\n".join(f"  • {row.game_name}" for row in applicable)
+        if not messagebox.askyesno(
+            "Confirm Batch Apply",
+            f"Apply setting changes to {len(applicable)} game(s)?\n\n{game_list}",
+        ):
+            return
+
+        total_ok = 0
+        total_err = 0
+        error_details: List[str] = []
+
+        for row in applicable:
+            changes = row.get_pending_changes()
+            result = write_settings(row.game_name, row._config_dicts, changes)
+            for r in result:
+                if r["status"] == "ok":
+                    total_ok += 1
+                    # Update display labels
+                    for key, val in changes.items():
+                        if key in row._setting_labels:
+                            row._setting_labels[key].configure(
+                                text=val, text_color=("#1a8a4a", "#5af0a0")
+                            )
+                        if row._key_settings:
+                            row._key_settings[key] = val
+                elif r["status"] == "error":
+                    total_err += 1
+                    error_details.append(f"{row.game_name}: {r['detail']}")
+
+        if error_details:
+            msg = "\n".join(f"  • {e}" for e in error_details)
+            messagebox.showwarning(
+                "Batch Apply Partial",
+                f"Applied to {total_ok} file(s), {total_err} error(s):\n\n{msg}",
+            )
+        else:
+            messagebox.showinfo(
+                "Batch Apply Complete",
+                f"Successfully applied settings to {total_ok} config file(s) "
+                f"across {len(applicable)} game(s).",
+            )
 
     def run(self) -> None:
         """Start the Tkinter event loop."""

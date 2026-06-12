@@ -57,6 +57,59 @@ DISPLAY_NAMES_EN = {
     FRAME_GENERATION: "Frame Generation",
 }
 
+# Dropdown options for each setting.  The first value is the default /
+# "no change" sentinel shown when the user has not explicitly picked a
+# value.  The rest are the selectable choices.
+SETTING_OPTIONS: Dict[str, List[str]] = {
+    RESOLUTION: [
+        "—",
+        "1280x720",
+        "1600x900",
+        "1920x1080",
+        "2560x1080",
+        "2560x1440",
+        "3440x1440",
+        "3840x2160",
+    ],
+    SCREEN_MODE: [
+        "—",
+        "Fullscreen",
+        "Borderless Windowed",
+        "Windowed",
+    ],
+    VSYNC: [
+        "—",
+        "On",
+        "Off",
+    ],
+    FRAME_LIMIT: [
+        "—",
+        "Unlimited",
+        "30 FPS",
+        "60 FPS",
+        "120 FPS",
+        "144 FPS",
+        "240 FPS",
+    ],
+    DYNAMIC_RESOLUTION: [
+        "—",
+        "On",
+        "Off",
+    ],
+    UPSCALING: [
+        "—",
+        "Off",
+        "XeSS",
+        "DLSS",
+        "FSR",
+    ],
+    FRAME_GENERATION: [
+        "—",
+        "Off",
+        "On",
+    ],
+}
+
 
 def _empty_result() -> Dict[str, Optional[str]]:
     return {k: None for k in ALL_KEYS}
