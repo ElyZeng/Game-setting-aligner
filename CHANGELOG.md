@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.05.1 (2026-06-14)
+
+### New Features
+- **Global Settings Panel**: New top-level panel with dropdowns for all 7 settings — apply once, write to all supported games via "⚡ Apply to All Supported Games" button
+- **Smart Dropdown Filtering**: Per-game settings panels now only show dropdowns for settings the game actually supports; `N/A` settings shown as read-only labels, unsupported (`None`) settings hidden entirely
+
+### Bug Fixes
+- **`{{P|game}}` expansion**: Now correctly substitutes the game's install path instead of expanding to an empty string
+- **`{{P|userprofile/appdata/locallow}}`**: Added missing token mapping for Unity LocalLow config paths (e.g. Sons Of The Forest)
+- **Wiki markup in paths**: Strip `''(version info)''` italic markup from config paths returned by PCGamingWiki
+- **™/®/© in game titles**: Retry wiki lookups with cleaned titles and search API fallback when special characters cause lookup failures (e.g. Horizon Zero Dawn™ Remastered)
+
+### Files Changed
+- `main.py` — Version bump to 0.05.1
+- `gui/app.py` — Global settings panel, smart dropdown filtering, window 960×700
+- `wiki_api/pcgamingwiki.py` — `install_path` parameter, `locallow` token, wiki markup stripping, ™/® retry logic
+
+---
+
 ## v0.05 (2026-06-12)
 
 ### New Features

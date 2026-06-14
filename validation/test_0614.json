@@ -1,0 +1,344 @@
+{
+  "version": 2,
+  "games": {
+    "Horizon Zero Dawn™ Complete Edition": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\Horizon Zero Dawn",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Horizon Zero Dawn™ Complete Edition",
+        "url": "https://www.pcgamingwiki.com/wiki/Horizon_Zero_Dawn™_Complete_Edition",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "Sons Of The Forest": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\Sons Of The Forest",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Sons Of The Forest",
+        "url": "https://www.pcgamingwiki.com/wiki/Sons_Of_The_Forest",
+        "raw_paths": [
+          "{{p|userprofile\\appdata\\locallow}}\\Endnight\\SonsOfTheForest\\SonsGameSettings.cfg"
+        ],
+        "expanded_paths": [
+          "{{P|userprofile/appdata/locallow}}/Endnight/SonsOfTheForest/SonsGameSettings.cfg"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "{{P|userprofile/appdata/locallow}}/Endnight/SonsOfTheForest/SonsGameSettings.cfg",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "Street Fighter™ 6": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\Street Fighter 6",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Street Fighter™ 6",
+        "url": "https://www.pcgamingwiki.com/wiki/Street_Fighter™_6",
+        "raw_paths": [
+          "{{P|game}}\\config.ini"
+        ],
+        "expanded_paths": [
+          "/config.ini"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "/config.ini",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "Dyson Sphere Program": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\Dyson Sphere Program",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Dyson Sphere Program",
+        "url": "https://www.pcgamingwiki.com/wiki/Dyson_Sphere_Program",
+        "raw_paths": [
+          "{{P|userprofile\\Documents}}\\Dyson Sphere Program\\options.dsv ''(??? and newer)''",
+          "{{P|userprofile\\Documents}}\\Dyson Sphere Program\\options.dso ''(??? - 0.6.16.????)''",
+          "{{P|userprofile\\Documents}}\\Dyson Sphere Program\\options.xml ''(0.6.15.5651 and older)''"
+        ],
+        "expanded_paths": [
+          "C:/Users/whoareyou/OneDrive/文件/Dyson Sphere Program/options.dsv ''(??? and newer)''",
+          "C:/Users/whoareyou/OneDrive/文件/Dyson Sphere Program/options.dso ''(??? - 0.6.16.????)''",
+          "C:/Users/whoareyou/OneDrive/文件/Dyson Sphere Program/options.xml ''(0.6.15.5651 and older)''"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "C:/Users/whoareyou/OneDrive/文件/Dyson Sphere Program/options.dsv ''(??? and newer)''",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        },
+        {
+          "expanded_path": "C:/Users/whoareyou/OneDrive/文件/Dyson Sphere Program/options.dso ''(??? - 0.6.16.????)''",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        },
+        {
+          "expanded_path": "C:/Users/whoareyou/OneDrive/文件/Dyson Sphere Program/options.xml ''(0.6.15.5651 and older)''",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "Forza Horizon 5": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\ForzaHorizon5",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Forza Horizon 5",
+        "url": "https://www.pcgamingwiki.com/wiki/Forza_Horizon_5",
+        "raw_paths": [
+          "{{P|localappdata}}\\Packages\\Microsoft.624F8B84B80_8wekyb3d8bbwe\\LocalCache\\Local\\User_GamingLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\",
+          "{{P|localappdata}}\\ForzaHorizon5\\User_GamingLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\"
+        ],
+        "expanded_paths": [
+          "C:/Users/whoareyou/AppData/Local/Packages/Microsoft.624F8B84B80_8wekyb3d8bbwe/LocalCache/Local/User_GamingLocalStorageDirectory/ConnectedStorage/ForzaUserConfigSelections",
+          "C:/Users/whoareyou/AppData/Local/ForzaHorizon5/User_GamingLocalStorageDirectory/ConnectedStorage/ForzaUserConfigSelections"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "C:/Users/whoareyou/AppData/Local/Packages/Microsoft.624F8B84B80_8wekyb3d8bbwe/LocalCache/Local/User_GamingLocalStorageDirectory/ConnectedStorage/ForzaUserConfigSelections",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        },
+        {
+          "expanded_path": "C:/Users/whoareyou/AppData/Local/ForzaHorizon5/User_GamingLocalStorageDirectory/ConnectedStorage/ForzaUserConfigSelections",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "Bodycam": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\Bodycam",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Bodycam",
+        "url": "https://www.pcgamingwiki.com/wiki/Bodycam",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "Horizon Forbidden West™ Complete Edition": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\Horizon Forbidden West Complete Edition",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Horizon Forbidden West™ Complete Edition",
+        "url": "https://www.pcgamingwiki.com/wiki/Horizon_Forbidden_West™_Complete_Edition",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "Forza Horizon 6": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\ForzaHorizon6",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Forza Horizon 6",
+        "url": "https://www.pcgamingwiki.com/wiki/Forza_Horizon_6",
+        "raw_paths": [
+          "{{P|localappdata}}\\ForzaHorizon6\\LocalStorage_Shared\\ForzaUserConfigSelections\\UserConfigSelections"
+        ],
+        "expanded_paths": [
+          "C:/Users/whoareyou/AppData/Local/ForzaHorizon6/LocalStorage_Shared/ForzaUserConfigSelections/UserConfigSelections"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "C:/Users/whoareyou/AppData/Local/ForzaHorizon6/LocalStorage_Shared/ForzaUserConfigSelections/UserConfigSelections",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "PICO PARK 2": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\PICO PARK 2",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "PICO PARK 2",
+        "url": "https://www.pcgamingwiki.com/wiki/PICO_PARK_2",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "F1® 25": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\F1 25",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "F1® 25",
+        "url": "https://www.pcgamingwiki.com/wiki/F1®_25",
+        "raw_paths": [
+          "{{p|userprofile\\documents}}\\My Games\\F1 25\\hardwaresettings"
+        ],
+        "expanded_paths": [
+          "C:/Users/whoareyou/OneDrive/文件/My Games/F1 25/hardwaresettings"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "C:/Users/whoareyou/OneDrive/文件/My Games/F1 25/hardwaresettings",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "Dying Light 2: Reloaded Edition": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\Dying Light 2",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Dying Light 2: Reloaded Edition",
+        "url": "https://www.pcgamingwiki.com/wiki/Dying_Light_2:_Reloaded_Edition",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    },
+    "Dota 2": {
+      "detected_install_path": "D:\\SteamLibrary\\steamapps\\common\\dota 2 beta",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Dota 2",
+        "url": "https://www.pcgamingwiki.com/wiki/Dota_2",
+        "raw_paths": [
+          "{{p|game}}/dota/cfg/"
+        ],
+        "expanded_paths": [
+          "/dota/cfg"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "/dota/cfg",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "ARC Raiders": {
+      "detected_install_path": "E:\\SteamLibrary\\steamapps\\common\\Arc Raiders",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "ARC Raiders",
+        "url": "https://www.pcgamingwiki.com/wiki/ARC_Raiders",
+        "raw_paths": [
+          "{{p|localappdata}}\\PioneerGame\\Saved\\Config\\WindowsClient"
+        ],
+        "expanded_paths": [
+          "C:/Users/whoareyou/AppData/Local/PioneerGame/Saved/Config/WindowsClient"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "C:/Users/whoareyou/AppData/Local/PioneerGame/Saved/Config/WindowsClient",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "Assassin's Creed Shadows": {
+      "detected_install_path": "E:\\SteamLibrary\\steamapps\\common\\Assassin's Creed Shadows",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Assassin's Creed Shadows",
+        "url": "https://www.pcgamingwiki.com/wiki/Assassin's_Creed_Shadows",
+        "raw_paths": [
+          "{{P|userprofile\\Documents}}\\Assassin's Creed Shadows\\ACShadows.ini"
+        ],
+        "expanded_paths": [
+          "C:/Users/whoareyou/OneDrive/文件/Assassin's Creed Shadows/ACShadows.ini"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "C:/Users/whoareyou/OneDrive/文件/Assassin's Creed Shadows/ACShadows.ini",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "Grand Theft Auto V Enhanced": {
+      "detected_install_path": "E:\\SteamLibrary\\steamapps\\common\\Grand Theft Auto V Enhanced",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Grand Theft Auto V Enhanced",
+        "url": "https://www.pcgamingwiki.com/wiki/Grand_Theft_Auto_V_Enhanced",
+        "raw_paths": [
+          "{{P|userprofile\\Documents}}\\Rockstar Games\\GTAV Enhanced\\settings.xml"
+        ],
+        "expanded_paths": [
+          "C:/Users/whoareyou/OneDrive/文件/Rockstar Games/GTAV Enhanced/settings.xml"
+        ],
+        "error": null
+      },
+      "config_files": [
+        {
+          "expanded_path": "C:/Users/whoareyou/OneDrive/文件/Rockstar Games/GTAV Enhanced/settings.xml",
+          "found": false,
+          "content": null,
+          "truncated": false,
+          "error": "path_not_found"
+        }
+      ]
+    },
+    "Carnival Hunt Demo": {
+      "detected_install_path": "E:\\SteamLibrary\\steamapps\\common\\Carnival Hunt Demo",
+      "platform": "Steam",
+      "pcgamingwiki": {
+        "page_title": "Carnival Hunt Demo",
+        "url": "https://www.pcgamingwiki.com/wiki/Carnival_Hunt_Demo",
+        "raw_paths": [],
+        "expanded_paths": [],
+        "error": null
+      },
+      "config_files": []
+    }
+  }
+}

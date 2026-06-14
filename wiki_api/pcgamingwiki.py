@@ -121,6 +121,9 @@ _WIKI_TAG_MAP: dict = {
     "{{P|userprofile/documents}}": _get_documents_path(),
     "{{P|userprofile/appdata}}": os.environ.get("APPDATA", os.path.expanduser("~/.config")),
     "{{P|userprofile/localappdata}}": os.environ.get("LOCALAPPDATA", os.path.expanduser("~/.local/share")),
+    "{{P|userprofile/appdata/locallow}}": os.path.join(os.path.expanduser("~"), "AppData", "LocalLow") if os.name == "nt" else os.path.expanduser("~/.local/share"),
+    "{{P|userprofile\\documents}}": _get_documents_path(),
+    "{{P|userprofile\\appdata\\locallow}}": os.path.join(os.path.expanduser("~"), "AppData", "LocalLow") if os.name == "nt" else os.path.expanduser("~/.local/share"),
 }
 
 # Registry path token prefixes – these are not filesystem paths
@@ -190,13 +193,15 @@ def _resolve_uid_glob(path: str) -> Optional[str]:
         return matches[0]
 
 
-def _expand_path_tokens(path: str) -> str:
+def _expand_path_tokens(path: str, install_path: str = "") -> str:
     """Expand PCGamingWiki path tokens and Wiki template tags to absolute OS paths.
 
     Processing order:
 
+    0. Strip wiki markup artefacts (e.g. ``''(version info)''``).
     1. Normalise ``{{p|…}}`` (lower-case *p*) to canonical ``{{P|…}}`` form.
     2. Expand Wiki template tags from :data:`_WIKI_TAG_MAP`.
+       The ``{{P|game}}`` token is replaced with *install_path* if provided.
     3. Expand standard Windows environment variables via
        :func:`os.path.expandvars`.
     4. Expand remaining special tokens defined in :data:`_PATH_TOKENS`.
@@ -206,6 +211,9 @@ def _expand_path_tokens(path: str) -> str:
        appends ``\\Roaming\\`` again).
     7. Convert separators to ``/`` so output is stable across platforms.
     """
+    # 0. Strip wiki markup artefacts like ''(version info)'' from paths
+    path = re.sub(r"\s*''[^']*''", "", path)
+
     # 1. Normalise {{p|...}} or {{P|...}} → {{P|<lowercase content with / sep>}}
     #    so tag lookups in _WIKI_TAG_MAP are case-insensitive and separator-agnostic.
     #    This handles both {{P|userprofile/Documents}} and {{p|userprofile\Documents}}.
@@ -216,6 +224,9 @@ def _expand_path_tokens(path: str) -> str:
     )
 
     # 2. Expand Wiki template tags
+    #    Handle {{P|game}} specially — use install_path if provided.
+    if install_path:
+        path = path.replace("{{P|game}}", install_path)
     for tag, replacement in _WIKI_TAG_MAP.items():
         path = path.replace(tag, replacement)
 
@@ -310,7 +321,7 @@ def _split_by_pipe(content: str) -> List[str]:
 
 
 def _parse_gamedata_config(
-    wikitext: str, os_filter: str = "Windows"
+    wikitext: str, os_filter: str = "Windows", install_path: str = ""
 ) -> Tuple[List[str], List[str]]:
     """Parse ``{{Game data/config|OS|path|…}}`` blocks from *wikitext*.
 
@@ -365,7 +376,7 @@ def _parse_gamedata_config(
                 if reg is not None:
                     expanded_paths.append(reg)
             else:
-                expanded = _expand_path_tokens(raw)
+                expanded = _expand_path_tokens(raw, install_path=install_path)
                 resolved = _resolve_uid_glob(expanded)
                 if resolved is not None:
                     expanded_paths.append(resolved)
@@ -422,7 +433,7 @@ class PCGamingWikiClient:
                 return value
         return None
 
-    def _expand_cached_raw_paths(self, raw_paths: List[str]) -> List[str]:
+    def _expand_cached_raw_paths(self, raw_paths: List[str], install_path: str = "") -> List[str]:
         """Expand raw cached paths to local OS paths."""
         expanded: List[str] = []
         for raw in raw_paths:
@@ -431,7 +442,7 @@ class PCGamingWikiClient:
                 if reg is not None:
                     expanded.append(reg)
                 continue
-            exp = _expand_path_tokens(raw)
+            exp = _expand_path_tokens(raw, install_path=install_path)
             resolved = _resolve_uid_glob(exp)
             if resolved is not None:
                 expanded.append(resolved)
@@ -476,7 +487,7 @@ class PCGamingWikiClient:
             _, expanded = self._scrape_wiki_page_raw(game_title)
         return expanded
 
-    def get_config_info(self, game_title: str) -> Dict[str, Any]:
+    def get_config_info(self, game_title: str, install_path: str = "") -> Dict[str, Any]:
         """Return a dict with raw and expanded config paths for *game_title*.
 
         The returned dict has the following keys:
@@ -506,7 +517,9 @@ class PCGamingWikiClient:
         cached = self._lookup_cache(game_title)
         if cached and cached.get("raw_paths"):
             result["raw_paths"] = cached["raw_paths"]
-            result["expanded_paths"] = self._expand_cached_raw_paths(cached["raw_paths"])
+            result["expanded_paths"] = self._expand_cached_raw_paths(
+                cached["raw_paths"], install_path=install_path
+            )
             if cached.get("page_title"):
                 result["page_title"] = cached["page_title"]
                 result["url"] = _WIKI_BASE + cached["page_title"].replace(" ", "_")
@@ -516,18 +529,34 @@ class PCGamingWikiClient:
             result["error"] = "requests library not available"
             return result
         try:
-            raw, expanded = self._query_cargo_raw(game_title)
+            raw, expanded = self._query_cargo_raw(game_title, install_path=install_path)
             if not raw:
-                raw, expanded = self._query_mediawiki_raw(game_title)
+                raw, expanded = self._query_mediawiki_raw(game_title, install_path=install_path)
             if not raw:
-                raw, expanded = self._scrape_wiki_page_raw(game_title)
+                raw, expanded = self._scrape_wiki_page_raw(game_title, install_path=install_path)
+            # Retry with cleaned title (strip ™®© etc.) if no results found
+            if not raw:
+                cleaned = re.sub(r'[\u2122\u00AE\u00A9]', '', game_title).strip()
+                if cleaned != game_title:
+                    raw, expanded = self._query_cargo_raw(cleaned, install_path=install_path)
+                    if not raw:
+                        raw, expanded = self._query_mediawiki_raw(cleaned, install_path=install_path)
+                    if not raw:
+                        raw, expanded = self._scrape_wiki_page_raw(cleaned, install_path=install_path)
+            # Retry with search API to find the correct page title
+            if not raw:
+                searched = self.search_game(game_title)
+                if searched and searched != game_title:
+                    raw, expanded = self._query_cargo_raw(searched, install_path=install_path)
+                    if not raw:
+                        raw, expanded = self._query_mediawiki_raw(searched, install_path=install_path)
             result["raw_paths"] = raw
             result["expanded_paths"] = expanded
         except Exception as exc:  # pragma: no cover
             result["error"] = str(exc)
         return result
 
-    def _query_cargo_raw(self, game_title: str) -> Tuple[List[str], List[str]]:
+    def _query_cargo_raw(self, game_title: str, install_path: str = "") -> Tuple[List[str], List[str]]:
         """Query PCGamingWiki Cargo tables for config paths.
 
         Returns a tuple ``(raw_paths, expanded_paths)``.
@@ -561,7 +590,7 @@ class PCGamingWikiClient:
                         if reg is not None:
                             expanded_paths.append(reg)
                     else:
-                        expanded = _expand_path_tokens(raw_path)
+                        expanded = _expand_path_tokens(raw_path, install_path=install_path)
                         resolved = _resolve_uid_glob(expanded)
                         if resolved is not None:
                             expanded_paths.append(resolved)
@@ -569,7 +598,7 @@ class PCGamingWikiClient:
         except Exception:
             return [], []
 
-    def _query_mediawiki_raw(self, game_title: str) -> Tuple[List[str], List[str]]:
+    def _query_mediawiki_raw(self, game_title: str, install_path: str = "") -> Tuple[List[str], List[str]]:
         """Fetch wikitext via the MediaWiki API and parse config paths.
 
         Uses ``action=query&prop=revisions`` to retrieve the raw wikitext for
@@ -607,11 +636,11 @@ class PCGamingWikiClient:
             wikitext = slot.get("*", "")
             if not wikitext:
                 return [], []
-            return _parse_gamedata_config(wikitext)
+            return _parse_gamedata_config(wikitext, install_path=install_path)
         except Exception:
             return [], []
 
-    def _scrape_wiki_page_raw(self, game_title: str) -> Tuple[List[str], List[str]]:
+    def _scrape_wiki_page_raw(self, game_title: str, install_path: str = "") -> Tuple[List[str], List[str]]:
         """Scrape the PCGamingWiki page for config paths as a fallback.
 
         Returns a tuple ``(raw_paths, expanded_paths)``.
@@ -634,6 +663,6 @@ class PCGamingWikiClient:
             text = td.get_text(separator=" ", strip=True)
             if re.search(r"[/\\]", text):
                 raw_paths.append(text)
-                expanded_paths.append(_expand_path_tokens(text))
+                expanded_paths.append(_expand_path_tokens(text, install_path=install_path))
 
         return raw_paths, expanded_paths

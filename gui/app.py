@@ -147,7 +147,11 @@ class GameRow:
         self._expanded = not self._expanded
 
     def _build_settings_panel(self) -> None:
-        """Populate the detail panel with key settings dropdowns."""
+        """Populate the detail panel with key settings dropdowns.
+
+        Only settings that have a detected value (not None) are shown.
+        Settings with value "N/A" are shown as read-only without a dropdown.
+        """
         # Clear previous content
         for w in self._detail_frame.winfo_children():
             w.destroy()
@@ -157,13 +161,20 @@ class GameRow:
         if not self._key_settings:
             return
 
-        # Two-column grid: 4 rows on left, 3 rows on right
+        # Filter to only supported settings (non-None)
+        supported_keys = [k for k in ALL_KEYS if self._key_settings.get(k) is not None]
+        if not supported_keys:
+            return
+
+        # Two-column grid layout
         grid_frame = ctk.CTkFrame(self._detail_frame, fg_color="transparent")
         grid_frame.pack(fill="x", padx=4, pady=4)
 
-        for i, key in enumerate(ALL_KEYS):
-            col = 0 if i < 4 else 3
-            row = i if i < 4 else i - 4
+        half = (len(supported_keys) + 1) // 2  # split roughly in half
+
+        for i, key in enumerate(supported_keys):
+            col = 0 if i < half else 3
+            row = i if i < half else i - half
 
             icon = self._SETTING_ICONS.get(key, "")
             display = DISPLAY_NAMES_EN.get(key, key)
@@ -180,10 +191,7 @@ class GameRow:
             name_label.grid(row=row, column=col, sticky="w", padx=(8, 2), pady=1)
 
             # Current value label
-            if value is None:
-                display_val = "—"
-                color = ("#999", "#555566")
-            elif value == "N/A":
+            if value == "N/A":
                 display_val = "N/A"
                 color = ("#999", "#555566")
             else:
@@ -201,27 +209,28 @@ class GameRow:
             val_label.grid(row=row, column=col + 1, sticky="w", padx=(2, 4), pady=1)
             self._setting_labels[key] = val_label
 
-            # Dropdown for changing
-            options = SETTING_OPTIONS.get(key, ["—"])
-            var = ctk.StringVar(value="—")
-            self._setting_vars[key] = var
+            # Dropdown — only for editable settings (not N/A)
+            if value != "N/A":
+                options = SETTING_OPTIONS.get(key, ["—"])
+                var = ctk.StringVar(value="—")
+                self._setting_vars[key] = var
 
-            dropdown = ctk.CTkOptionMenu(
-                grid_frame,
-                variable=var,
-                values=options,
-                width=120,
-                height=22,
-                font=ctk.CTkFont(size=10),
-                dropdown_font=ctk.CTkFont(size=10),
-                fg_color=("#c8c8d0", "#2a2a3d"),
-                button_color=("#b0b0b8", "#3a3a50"),
-                button_hover_color=("#a0a0a8", "#4a4a60"),
-                dropdown_fg_color=("#e0e0e0", "#222233"),
-                dropdown_hover_color=("#d0d0d8", "#333346"),
-                text_color=("#333", "#ccc"),
-            )
-            dropdown.grid(row=row, column=col + 2, sticky="w", padx=(2, 8), pady=1)
+                dropdown = ctk.CTkOptionMenu(
+                    grid_frame,
+                    variable=var,
+                    values=options,
+                    width=120,
+                    height=22,
+                    font=ctk.CTkFont(size=10),
+                    dropdown_font=ctk.CTkFont(size=10),
+                    fg_color=("#c8c8d0", "#2a2a3d"),
+                    button_color=("#b0b0b8", "#3a3a50"),
+                    button_hover_color=("#a0a0a8", "#4a4a60"),
+                    dropdown_fg_color=("#e0e0e0", "#222233"),
+                    dropdown_hover_color=("#d0d0d8", "#333346"),
+                    text_color=("#333", "#ccc"),
+                )
+                dropdown.grid(row=row, column=col + 2, sticky="w", padx=(2, 8), pady=1)
 
         # Apply button row
         btn_frame = ctk.CTkFrame(self._detail_frame, fg_color="transparent")
@@ -355,9 +364,9 @@ class App:
         ctk.set_default_color_theme("blue")
 
         self.root = ctk.CTk()
-        self.root.title("Game Setting Aligner v0.05")
-        self.root.geometry("960x650")
-        self.root.minsize(800, 450)
+        self.root.title("Game Setting Aligner v0.05.1")
+        self.root.geometry("960x700")
+        self.root.minsize(800, 500)
 
         self._game_rows: List[GameRow] = []
         self._wiki_client = PCGamingWikiClient()
@@ -402,6 +411,76 @@ class App:
         # Progress bar (shown while loading)
         self._progress = ctk.CTkProgressBar(self.root, mode="indeterminate")
         self._progress.pack(fill="x", padx=16, pady=(4, 0))
+
+        # ── Global Settings Panel ──
+        self._global_frame = ctk.CTkFrame(
+            self.root, corner_radius=8,
+            fg_color=("#e0e3e8", "#1a1a2a"),
+            border_width=1,
+            border_color=("#b0b0b0", "#333346"),
+        )
+        self._global_frame.pack(fill="x", padx=16, pady=(8, 0))
+
+        global_header = ctk.CTkFrame(self._global_frame, fg_color="transparent")
+        global_header.pack(fill="x", padx=4, pady=(4, 0))
+
+        ctk.CTkLabel(
+            global_header,
+            text="⚙️  Global Settings",
+            font=ctk.CTkFont(size=13, weight="bold"),
+        ).pack(side="left", padx=8)
+
+        self._global_apply_btn = ctk.CTkButton(
+            global_header,
+            text="⚡ Apply to All Supported Games",
+            width=220,
+            height=26,
+            font=ctk.CTkFont(size=11),
+            fg_color=("#2b8a3e", "#2b6b3e"),
+            hover_color=("#237032", "#1f5530"),
+            command=self._global_apply,
+        )
+        self._global_apply_btn.pack(side="right", padx=8, pady=4)
+
+        global_grid = ctk.CTkFrame(self._global_frame, fg_color="transparent")
+        global_grid.pack(fill="x", padx=4, pady=(2, 6))
+
+        self._global_vars: Dict[str, ctk.StringVar] = {}
+        for i, key in enumerate(ALL_KEYS):
+            col = (i % 4) * 2
+            row = i // 4
+
+            icon = GameRow._SETTING_ICONS.get(key, "")
+            display = DISPLAY_NAMES_EN.get(key, key)
+
+            ctk.CTkLabel(
+                global_grid,
+                text=f"{icon} {display}",
+                font=ctk.CTkFont(size=11, weight="bold"),
+                text_color=("#555", "#8888aa"),
+                anchor="w",
+                width=120,
+            ).grid(row=row, column=col, sticky="w", padx=(8, 2), pady=2)
+
+            options = SETTING_OPTIONS.get(key, ["—"])
+            var = ctk.StringVar(value="—")
+            self._global_vars[key] = var
+
+            ctk.CTkOptionMenu(
+                global_grid,
+                variable=var,
+                values=options,
+                width=120,
+                height=24,
+                font=ctk.CTkFont(size=10),
+                dropdown_font=ctk.CTkFont(size=10),
+                fg_color=("#c8c8d0", "#2a2a3d"),
+                button_color=("#b0b0b8", "#3a3a50"),
+                button_hover_color=("#a0a0a8", "#4a4a60"),
+                dropdown_fg_color=("#e0e0e0", "#222233"),
+                dropdown_hover_color=("#d0d0d8", "#333346"),
+                text_color=("#333", "#ccc"),
+            ).grid(row=row, column=col + 1, sticky="w", padx=(2, 12), pady=2)
 
         # Game list inside a scrollable frame
         list_container = ctk.CTkFrame(self.root, corner_radius=8)
@@ -542,8 +621,9 @@ class App:
         def _detect(game: Any):
             """Query Wiki and detect local config files for a single game."""
             game_name = getattr(game, "name", str(game))
+            install_path = getattr(game, "install_path", "")
             try:
-                wiki_info = self._wiki_client.get_config_info(game_name)
+                wiki_info = self._wiki_client.get_config_info(game_name, install_path=install_path)
                 expanded_paths = wiki_info.get("expanded_paths") or []
                 found_files = detect_config_files(expanded_paths)
 
@@ -711,6 +791,98 @@ class App:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    def _global_apply(self) -> None:
+        """Apply global settings to all games that support each changed setting."""
+        # Gather which global settings the user changed
+        global_changes: Dict[str, str] = {}
+        for key, var in self._global_vars.items():
+            val = var.get()
+            if val != "—":
+                global_changes[key] = val
+
+        if not global_changes:
+            messagebox.showinfo(
+                "No Changes",
+                "No global settings have been selected.\n"
+                "Use the dropdowns in the Global Settings panel to choose values.",
+            )
+            return
+
+        # Find all games that support each changed setting
+        applicable: List[GameRow] = []
+        for row in self._game_rows:
+            if not row._config_dicts or not row._key_settings:
+                continue
+            # Only apply settings that the game actually supports (not None, not N/A)
+            game_applicable = {
+                k: v for k, v in global_changes.items()
+                if row._key_settings.get(k) is not None and row._key_settings.get(k) != "N/A"
+            }
+            if game_applicable:
+                applicable.append(row)
+
+        if not applicable:
+            messagebox.showinfo(
+                "No Applicable Games",
+                "No games found that support the selected settings.\n"
+                "Games need detected config files to apply settings.",
+            )
+            return
+
+        settings_desc = ", ".join(
+            f"{DISPLAY_NAMES_EN.get(k, k)}: {v}" for k, v in global_changes.items()
+        )
+        game_list = "\n".join(f"  • {row.game_name}" for row in applicable)
+        if not messagebox.askyesno(
+            "Confirm Global Apply",
+            f"Apply these settings to {len(applicable)} game(s)?\n\n"
+            f"Settings: {settings_desc}\n\n{game_list}",
+        ):
+            return
+
+        total_ok = 0
+        total_err = 0
+        error_details: List[str] = []
+
+        for row in applicable:
+            # Only apply supported settings for this game
+            game_changes = {
+                k: v for k, v in global_changes.items()
+                if row._key_settings
+                and row._key_settings.get(k) is not None
+                and row._key_settings.get(k) != "N/A"
+            }
+            if not game_changes:
+                continue
+
+            result = write_settings(row.game_name, row._config_dicts, game_changes)
+            for r in result:
+                if r["status"] == "ok":
+                    total_ok += 1
+                    for key, val in game_changes.items():
+                        if key in row._setting_labels:
+                            row._setting_labels[key].configure(
+                                text=val, text_color=("#1a8a4a", "#5af0a0")
+                            )
+                        if row._key_settings:
+                            row._key_settings[key] = val
+                elif r["status"] == "error":
+                    total_err += 1
+                    error_details.append(f"{row.game_name}: {r['detail']}")
+
+        if error_details:
+            msg = "\n".join(f"  • {e}" for e in error_details)
+            messagebox.showwarning(
+                "Global Apply Partial",
+                f"Applied to {total_ok} file(s), {total_err} error(s):\n\n{msg}",
+            )
+        else:
+            messagebox.showinfo(
+                "Global Apply Complete",
+                f"Successfully applied settings to {total_ok} config file(s) "
+                f"across {len(applicable)} game(s).",
+            )
 
     def _batch_apply(self) -> None:
         """Apply dropdown changes across all games that have pending changes."""
